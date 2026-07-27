@@ -1,0 +1,9 @@
+# Ignore everything
+*
+
+# Allow python script evaluation files
+!evaluate_gemini_models.py
+!evaluate_groq_qwen.py
+!evaluate_openai_models.py
+!evaluate_openrouter_models.py
+!.gitignore

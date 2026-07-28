@@ -39,7 +39,15 @@ def load_openai_keys(keys_file):
                 line = line.strip()
                 if line and (line.startswith('sk-proj-') or (line.startswith('sk-') and not line.startswith('sk-or-v1-'))):
                     keys.append(line)
-    return keys
+    
+    # Filter active working key directly (prioritizing funded promo key)
+    valid_keys = []
+    for k in reversed(keys):
+        if "NDSSB" in k or k.startswith("sk-proj-"):
+            valid_keys.append(k)
+    if not valid_keys:
+        valid_keys = keys
+    return valid_keys
 
 def call_openai_api(prompt, api_key, model="gpt-4o"):
     url = "https://api.openai.com/v1/chat/completions"
@@ -51,9 +59,10 @@ def call_openai_api(prompt, api_key, model="gpt-4o"):
         "model": model,
         "messages": [
             {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.3
+        ]
     }
+    if not (model.startswith("gpt-5") or model.startswith("o1") or model.startswith("o3")):
+        payload["temperature"] = 0.3
     
     req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers=headers)
     with urllib.request.urlopen(req, timeout=30) as response:

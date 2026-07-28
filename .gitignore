@@ -1,9 +1,18 @@
-# Ignore everything
-*
+# Environments & Caches
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.pytest_cache/
 
-# Allow python script evaluation files
-!evaluate_gemini_models.py
-!evaluate_groq_qwen.py
-!evaluate_openai_models.py
-!evaluate_openrouter_models.py
-!.gitignore
+# Sensitive Information - NEVER commit API keys
+api keys
+*keys*
+.env
+
+# System & Logs
+*.log
+.DS_Store
+Thumbs.db

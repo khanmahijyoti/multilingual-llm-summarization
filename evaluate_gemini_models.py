@@ -143,7 +143,8 @@ def main():
 
             while not success:
                 for k_idx in range(len(gemini_keys)):
-                    k_key = gemini_keys[current_key_idx]
+                    actual_idx = (current_key_idx + k_idx) % len(gemini_keys)
+                    k_key = gemini_keys[actual_idx]
 
                     try:
                         gen_summary = call_gemini_api(prompt, api_key=k_key, model=args.model)

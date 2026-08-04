@@ -1,0 +1,9 @@
+Model	Precision (Factuality)	Recall (Coverage)	BanglaSummEval F1
+Deepseek V4 Flash	Error	Error	Error
+Gemini 2.5 Flash	Error	Error	Error
+Gemini 3.1 Flash Lite	Error	Error	Error
+Gpt 4O Mini	Error	Error	Error
+Gpt 5.6 Luna	Error	Error	Error
+Llama 3.3 70B (Groq)	Error	Error	Error
+Qwen 3.5 Flash	Error	Error	Error
+Qwen 3.6 27B	Error	Error	Error

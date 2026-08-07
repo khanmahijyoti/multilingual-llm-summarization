@@ -22,9 +22,36 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 gpu_lock = threading.Lock()
 
 # Global key pools and locks
+openrouter_keys = []
+gemini_keys = []
 openai_keys = []
 key_lock = threading.Lock()
 current_key_idx = 0
+
+def call_gemini_api(prompt, system_prompt, model, api_key, timeout=40):
+    full_prompt = f"{system_prompt}\n\nContext/Input:\n{prompt}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    payload = {
+        "contents": [
+            {
+                "parts": [{"text": full_prompt}]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.0,
+            "maxOutputTokens": 512
+        }
+    }
+    data = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        res_json = json.loads(response.read().decode('utf-8'))
+        if 'candidates' not in res_json or not res_json['candidates']:
+            if 'error' in res_json:
+                raise RuntimeError(f"Gemini API Error: {res_json['error']}")
+            raise RuntimeError(f"Unexpected Gemini response structure: {res_json}")
+        return res_json['candidates'][0]['content']['parts'][0]['text'].strip()
 
 def call_openai_api(prompt, system_prompt, model, api_key, timeout=40):
     url = "https://api.openai.com/v1/chat/completions"
@@ -58,42 +85,88 @@ def call_openai_api(prompt, system_prompt, model, api_key, timeout=40):
             raise RuntimeError(f"Unexpected OpenAI response structure: {res_json}")
         return res_json['choices'][0]['message']['content'].strip()
 
-def call_api_with_rotation(prompt, system_prompt, model, timeout=40):
+def call_openrouter_api(prompt, system_prompt, model, api_key, timeout=40):
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://github.com",
+        "X-Title": "BanglaSummEval Factual Consistency Pipeline"
+    }
+    
+    full_prompt = f"{system_prompt}\n\nContext/Input:\n{prompt}"
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "user", "content": full_prompt}
+        ],
+        "temperature": 0.0,
+        "max_tokens": 512,
+        "top_p": 1
+    }
+    data = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(url, data=data, headers=headers)
+    
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        res_json = json.loads(response.read().decode('utf-8'))
+        if 'choices' not in res_json:
+            if 'error' in res_json:
+                raise RuntimeError(f"OpenRouter API Error: {res_json['error']['message']}")
+            raise RuntimeError(f"Unexpected OpenRouter response structure: {res_json}")
+        return res_json['choices'][0]['message']['content'].strip()
+
+def call_api_with_rotation(prompt, system_prompt, model, provider, timeout=40):
     global current_key_idx
     
+    with key_lock:
+        if provider == "gemini":
+            pool = gemini_keys
+        elif provider == "openai":
+            pool = openai_keys
+        else:
+            pool = openrouter_keys
+            
+    if not pool:
+        raise ValueError(f"No keys loaded for provider: {provider}")
+        
     attempts = 0
-    max_attempts = len(openai_keys) * 2
+    max_attempts = len(pool) * 2
     
     while attempts < max_attempts:
         with key_lock:
-            api_key = openai_keys[current_key_idx]
+            api_key = pool[current_key_idx % len(pool)]
             
         try:
-            # Smooth request spacing
+            # Spacing to respect rate limits
             time.sleep(0.1)
-            return call_openai_api(prompt, system_prompt, model, api_key, timeout)
+            if provider == "gemini":
+                return call_gemini_api(prompt, system_prompt, model, api_key, timeout)
+            elif provider == "openai":
+                return call_openai_api(prompt, system_prompt, model, api_key, timeout)
+            else:
+                return call_openrouter_api(prompt, system_prompt, model, api_key, timeout)
         except urllib.error.HTTPError as e:
             with key_lock:
-                print(f"[!] Key index {current_key_idx} failed (HTTP {e.code}). Rotating...")
-                current_key_idx = (current_key_idx + 1) % len(openai_keys)
+                print(f"[!] Key index {current_key_idx % len(pool)} failed (HTTP {e.code}). Rotating...")
+                current_key_idx = (current_key_idx + 1) % len(pool)
             time.sleep(2 ** (attempts + 1))
         except Exception as e:
             with key_lock:
-                print(f"[!] Key index {current_key_idx} failed (error: {e}). Rotating...")
-                current_key_idx = (current_key_idx + 1) % len(openai_keys)
+                print(f"[!] Key index {current_key_idx % len(pool)} failed (error: {e}). Rotating...")
+                current_key_idx = (current_key_idx + 1) % len(pool)
             time.sleep(2)
         attempts += 1
         
-    raise RuntimeError("All keys in the OpenAI pool failed.")
+    raise RuntimeError(f"All keys in the {provider} pool failed.")
 
-def extract_entities_and_nouns(context, model):
+def extract_entities_and_nouns(context, model, provider):
     system_prompt = (
         "You are a model that extracts named entities and nouns from texts provided in Bangla "
         "and provides them as an unnumbered list, separated by commas (no need to mention the total "
         "number of named entities and nouns). Return the output in Bangla language without any additional explanations."
     )
     prompt = f"Context: {context}"
-    response = call_api_with_rotation(prompt, system_prompt, model)
+    response = call_api_with_rotation(prompt, system_prompt, model, provider)
     candidates = [c.strip() for c in response.split(",") if c.strip() and len(c.strip()) > 1]
     seen = set()
     cleaned = []
@@ -103,22 +176,22 @@ def extract_entities_and_nouns(context, model):
             cleaned.append(c)
     return cleaned
 
-def generate_question(context, answer, model):
+def generate_question(context, answer, model, provider):
     system_prompt = (
         "Generate a short question based on the context and answer. The question must be such that "
         "when asked in the context, the response is the provided answer. Return the question in Bangla language "
         "without any additional explanations."
     )
     prompt = f"Context: {context}\nAnswer: {answer}"
-    return call_api_with_rotation(prompt, system_prompt, model)
+    return call_api_with_rotation(prompt, system_prompt, model, provider)
 
-def answer_question(context, question, model):
+def answer_question(context, question, model, provider):
     system_prompt = (
         "Answer the question based on the context and question. Provide only a short answer (one or two words) "
         "in Bangla language without any additional explanation."
     )
     prompt = f"Context: {context}\nQuestion: {question}"
-    return call_api_with_rotation(prompt, system_prompt, model)
+    return call_api_with_rotation(prompt, system_prompt, model, provider)
 
 def compute_bertscore_recall(predictions, references):
     if not predictions or not references:
@@ -127,11 +200,8 @@ def compute_bertscore_recall(predictions, references):
         P, R, F1 = score(predictions, references, model_type="xlm-roberta-base", device=device, verbose=False)
         return [r.item() * 100 for r in R]
 
-def run_pipeline(source_doc, target_text, model, similarity_threshold=85.0):
-    # ----------------------------------------------------
-    # STAGE 1: PRECISION (Factual Consistency of Summary)
-    # ----------------------------------------------------
-    summary_entities = extract_entities_and_nouns(target_text, model)
+def run_pipeline(source_doc, target_text, model, provider, similarity_threshold=85.0):
+    summary_entities = extract_entities_and_nouns(target_text, model, provider)
     
     prec_correct = 0
     prec_total = 0
@@ -139,15 +209,14 @@ def run_pipeline(source_doc, target_text, model, similarity_threshold=85.0):
     if summary_entities:
         questions_s = []
         for ans in summary_entities:
-            q = generate_question(target_text, ans, model)
+            q = generate_question(target_text, ans, model, provider)
             questions_s.append((ans, q))
             
         answers_d = []
         for ans, q in questions_s:
-            pred_ans = answer_question(source_doc, q, model)
+            pred_ans = answer_question(source_doc, q, model, provider)
             answers_d.append((ans, q, pred_ans))
             
-        # Compute BERTScore semantic similarities
         preds = [a[2] for a in answers_d]
         refs = [a[0] for a in answers_d]
         similarities = compute_bertscore_recall(preds, refs)
@@ -161,11 +230,8 @@ def run_pipeline(source_doc, target_text, model, similarity_threshold=85.0):
             
     precision_score = (prec_correct / prec_total * 100) if prec_total > 0 else 100.0
     
-    # ----------------------------------------------------
-    # STAGE 2: RECALL (Content Coverage of Source)
-    # ----------------------------------------------------
     source_snippet = source_doc[:1200]
-    source_entities = extract_entities_and_nouns(source_snippet, model)[:6] # Limit to top 6 entities
+    source_entities = extract_entities_and_nouns(source_snippet, model, provider)[:6]
     
     rec_correct = 0
     rec_total = 0
@@ -173,15 +239,14 @@ def run_pipeline(source_doc, target_text, model, similarity_threshold=85.0):
     if source_entities:
         questions_d = []
         for ans in source_entities:
-            q = generate_question(source_snippet, ans, model)
+            q = generate_question(source_snippet, ans, model, provider)
             questions_d.append((ans, q))
             
         answers_s = []
         for ans, q in questions_d:
-            pred_ans = answer_question(target_text, q, model)
+            pred_ans = answer_question(target_text, q, model, provider)
             answers_s.append((ans, q, pred_ans))
             
-        # Compute BERTScore semantic similarities
         preds = [a[2] for a in answers_s]
         refs = [a[0] for a in answers_s]
         similarities = compute_bertscore_recall(preds, refs)
@@ -194,15 +259,11 @@ def run_pipeline(source_doc, target_text, model, similarity_threshold=85.0):
             rec_total += 1
             
     recall_score = (rec_correct / rec_total * 100) if rec_total > 0 else 0.0
-    
-    # ----------------------------------------------------
-    # STAGE 3: COMBINE F1
-    # ----------------------------------------------------
     f1_score = (2 * precision_score * recall_score) / (precision_score + recall_score) if (precision_score + recall_score) > 0 else 0.0
     
     return precision_score, recall_score, f1_score
 
-def evaluate_single_sample(sample, df_preds, model, threshold):
+def evaluate_single_sample(sample, df_preds, model, provider, threshold):
     sample_id = str(sample['id'])
     matched_rows = df_preds[df_preds['id'].astype(str) == sample_id]
     if matched_rows.empty:
@@ -212,7 +273,7 @@ def evaluate_single_sample(sample, df_preds, model, threshold):
     source_document = sample['text']
     
     try:
-        prec, rec, f1 = run_pipeline(source_document, generated_summary, model, threshold)
+        prec, rec, f1 = run_pipeline(source_document, generated_summary, model, provider, threshold)
         return {
             "id": sample_id,
             "precision": prec,
@@ -223,8 +284,10 @@ def evaluate_single_sample(sample, df_preds, model, threshold):
         print(f"[-] Error on Sample ID {sample_id}: {e}")
         return None
 
-def process_model(model_name, csv_file, dataset, model, threshold, workers):
-    output_csv = f"banglasummeval_{csv_file.replace('_bengali_results.csv', '').replace('_results.csv', '')}_results.csv"
+def process_model(model_name, csv_file, dataset, model, provider, threshold, workers):
+    # Differentiate output filenames by the judge model name (to keep Claude and GPT results separate!)
+    judge_slug = model.split("/")[-1].replace("-", "_").lower()
+    output_csv = f"banglasummeval_{judge_slug}_{csv_file.replace('_bengali_results.csv', '').replace('_results.csv', '')}_results.csv"
     
     results = []
     completed_ids = set()
@@ -253,7 +316,7 @@ def process_model(model_name, csv_file, dataset, model, threshold, workers):
     csv_write_lock = threading.Lock()
     
     with ThreadPoolExecutor(max_workers=workers) as executor:
-        futures = {executor.submit(evaluate_single_sample, sample, df_preds, model, threshold): sample for sample in pending_samples}
+        futures = {executor.submit(evaluate_single_sample, sample, df_preds, model, provider, threshold): sample for sample in pending_samples}
         
         count = 0
         for future in as_completed(futures):
@@ -267,7 +330,7 @@ def process_model(model_name, csv_file, dataset, model, threshold, workers):
                     print(f"    -> Progress [{model_name}]: {count}/{len(pending_samples)} completed.")
 
 def main():
-    global openai_keys
+    global openrouter_keys, gemini_keys, openai_keys
     parser = argparse.ArgumentParser(description="Run full BanglaSummEval benchmarks concurrently")
     parser.add_argument("--keys_file", type=str, default="api keys", help="File containing API keys")
     parser.add_argument("--key", type=str, default=None, help="Specific API key")
@@ -278,22 +341,41 @@ def main():
     parser.add_argument("--limit", type=int, default=1012, help="Limit dataset size per model")
     args = parser.parse_args()
     
+    # Auto-detect provider
+    model_lower = args.model.lower()
+    if "gemini" in model_lower:
+        provider = "gemini"
+    elif "gpt-" in model_lower or "luna" in model_lower:
+        provider = "openai"
+    else:
+        provider = "openrouter"
+        
     # Load keys
     if args.key:
-        openai_keys = [args.key]
+        if provider == "gemini":
+            gemini_keys = [args.key]
+        elif provider == "openai":
+            openai_keys = [args.key]
+        else:
+            openrouter_keys = [args.key]
+        print(f"[+] Using explicitly provided API key for provider {provider.upper()}")
     else:
         if os.path.exists(args.keys_file):
             with open(args.keys_file, "r", encoding="utf-8") as kf:
                 for line in kf:
                     key = line.strip()
-                    if key and (key.startswith("sk-proj-") or (key.startswith("sk-") and not key.startswith("sk-or-v1-"))):
+                    if not key or key.startswith("#"):
+                        continue
+                    if key.startswith("sk-or-v1-"):
+                        openrouter_keys.append(key)
+                    elif key.startswith("AQ.") or key.startswith("AIzaSy"):
+                        gemini_keys.append(key)
+                    elif key.startswith("sk-proj-") or (key.startswith("sk-") and not key.startswith("sk-or-v1-")):
                         openai_keys.append(key)
                         
-    if not openai_keys:
-        raise ValueError("No valid OpenAI API keys loaded.")
-        
-    print(f"[+] Loaded {len(openai_keys)} OpenAI API keys.")
+    print(f"[+] Loaded Key Pool: {len(gemini_keys)} Gemini | {len(openai_keys)} OpenAI | {len(openrouter_keys)} OpenRouter")
     print(f"[+] Starting BanglaSummEval Pipeline for all 8 models (Limit: {args.limit} samples)")
+    print(f"[+] Judge Model: {args.model} | Provider: {provider.upper()}")
     print(f"[+] Concurrent Workers: {args.workers} | Match Threshold: {args.threshold}%")
     
     # Load dataset
@@ -327,7 +409,7 @@ def main():
         print(f"[+] Processing Model: {model_name}")
         print("="*70)
         
-        process_model(model_name, csv_file, dataset, args.model, args.threshold, args.workers)
+        process_model(model_name, csv_file, dataset, args.model, provider, args.threshold, args.workers)
 
 if __name__ == "__main__":
     main()

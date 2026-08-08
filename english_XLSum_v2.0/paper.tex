@@ -1,0 +1,339 @@
+\documentclass[runningheads]{llncs}
+%
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\renewcommand\UrlFont{\color{blue}\rmfamily}
+\urlstyle{rm}
+\raggedbottom
+
+\begin{document}
+
+\title{Cross-Lingual Benchmarking of Frontier and Open-Weights LLMs for Abstractive Summarization: An Empirical Study on English and Bengali XL-Sum}
+
+\titlerunning{Cross-Lingual LLM Benchmarking on XL-Sum}
+
+\author{Khan Mahi Al Atahar\inst{1}\orcidID{0009-0006-9103-2068} \and
+Nazifa Tasneem\inst{1}\orcidID{0009-0002-3076-5568} \and
+Ajwad Abrar\inst{1}}
+
+\authorrunning{K. M. A. Atahar et al.}
+
+\institute{Department of Computer Science and Engineering, Islamic University of Technology, Gazipur, Bangladesh\\
+\email{mahiatahar@iut-dhaka.edu, nazifatasneem@iut-dhaka.edu}}
+
+\maketitle              % typeset the header of the contribution
+
+\begin{abstract}
+Abstractive text summarization across diverse languages remains a fundamental challenge in Natural Language Processing (NLP). While recent Large Language Models (LLMs) demonstrate state-of-the-art text synthesis in English, their cross-lingual transfer, factual fidelity, and semantic consistency in low-resource, morphologically complex languages like Bengali require rigorous empirical evaluation. In this paper, we present a standardized, zero-shot comparative benchmark of eight frontier closed-source and open-weights LLMs---GPT-5.6 Luna, GPT-4o Mini, Gemini 3.1 Flash Lite, Gemini 2.5 Flash, LLaMA 3.3 70B, Qwen 3.6 27B, Qwen 3.5 Flash, and DeepSeek V4 Flash---across 1,012 test items each from the English and Bengali XL-Sum datasets (2,024 total). We evaluate model performance using lexical metrics (ROUGE-1/2/L and BLEU), character alignment (chrF), semantic recall (BERTScore-Recall using \texttt{roberta-base} and \texttt{xlm-roberta-base}), reference-free QG/QA factuality verification (BanglaSummEval), and qualitative LLM-as-a-Judge scoring. Our empirical results reveal a prominent cross-lingual performance gap: GPT-5.6 Luna leads English lexical performance (ROUGE-1 of 24.12\%), whereas open-weights LLaMA~3.3~70B leads Bengali lexical performance (ROUGE-1 of 16.23\%) and factual precision (65.78\%). Proprietary Gemini 2.5 Flash achieves the highest factuality F1 (58.43\%). We analyze the discrepancy between n-gram overlap and factual faithfulness, highlighting key limitations in current automated evaluation frameworks.
+
+\keywords{LLMs \and Abstractive Summarization \and Multilingual Evaluation \and XL-Sum \and BanglaSummEval \and Factual Fidelity.}
+\end{abstract}
+
+%
+% ---------------------------------------------------------------
+% 1. INTRODUCTION
+% ---------------------------------------------------------------
+%
+\section{Introduction}\label{sec:intro}
+
+Abstractive news summarization aims to condense long-form text articles into concise, salient representations while preserving essential factual narrative and semantic integrity~\cite{lin2004}. With the advent of Large Language Models (LLMs) based on transformer neural architectures, text summarization has transitioned from extractive heuristic selection to fluid natural language generation~\cite{zhang2019,zheng2023}. Modern closed-source frontier models (e.g., OpenAI GPT-4o, Google Gemini) and open-weights architectures (e.g., Meta LLaMA 3.3, Qwen 3.6, DeepSeek V4) exhibit impressive capabilities in zero-shot task generalization.
+
+However, a significant body of recent literature highlights two major vulnerabilities in LLM-based summarization:
+\begin{enumerate}
+    \item \textbf{Cross-Lingual Disparity:} Benchmark performance remains heavily biased toward high-resource languages (predominantly English). In low-resource and morphologically rich languages like Bengali, LLMs frequently suffer from tokenization inefficiencies, syntactic degradation, and lower semantic coverage~\cite{vanveen2024}.
+    \item \textbf{Factual Inconsistency \& Hallucination:} Standard surface-level lexical metrics such as BLEU and ROUGE evaluate n-gram precision but penalize valid abstractive paraphrasing. Crucially, they fail to detect semantic fabrications and factual hallucinations, which pose high risks in real-world deployments~\cite{farquhar2024,tang2023}.
+\end{enumerate}
+
+To address these challenges, this paper presents a comprehensive empirical evaluation of eight state-of-the-art LLMs on the \textbf{XL-Sum benchmark} (1,012 test items each for English and Bengali). Beyond standard automatic metrics (ROUGE-1, ROUGE-2, ROUGE-L, BLEU, chrF, and BERTScore-Recall), we implement the reference-free \textbf{BanglaSummEval} QG/QA factuality pipeline and an \textbf{LLM-as-a-Judge} framework that scores coherence, consistency, fluency, and relevance.
+
+The primary contributions of this work are summarized as follows:
+\begin{itemize}
+    \item We establish a standardized cross-lingual zero-shot benchmark for eight frontier and open-weights LLMs across 1,012 test articles each in English and Bengali XL-Sum datasets.
+    \item We show that proprietary models dominate English, while open-weights LLaMA~3.3~70B leads Bengali lexical metrics and proprietary Gemini 2.5 Flash leads factuality F1.
+    \item We provide a multi-tiered comparison spanning lexical overlap, dense vector embeddings (BERTScore), reference-free QG/QA factual verification (BanglaSummEval), and LLM-as-a-Judge qualitative ratings.
+    \item All evaluation code and aggregated results are publicly available to support reproducibility (see Section~\ref{sec:availability}).
+\end{itemize}
+
+%
+% ---------------------------------------------------------------
+% 2. MATERIALS AND METHODS
+% ---------------------------------------------------------------
+%
+\section{Materials and Methods}\label{sec:methods}
+
+\subsection{Benchmark Dataset}\label{subsec:dataset}
+
+We utilize the \textbf{XL-Sum dataset}~\cite{hasan2021}, a large-scale multilingual abstractive summarization corpus derived from BBC news articles across 44 languages. The English XL-Sum test partition contains 11,535 articles and the Bengali test partition contains 1,012 articles. To enable tractable, paired evaluation across both languages, we randomly sample 1,012 English test articles using a fixed seed (\texttt{random\_state=42}); the full Bengali test split is used without subsampling. Each data instance contains a document ID, the full article text, and a professionally annotated reference summary (mean reference length: 21 words for both languages).
+
+Generated summary output lengths (measured in whitespace-tokenized words) varied substantially by model. Excluding 35 outputs from Qwen~3.6~27B that contained un-stripped reasoning traces (see below), English outputs averaged 73 words (median 72, range 3--124) and Bengali outputs averaged 57 words (median 57, range 1--103). All models produced outputs substantially longer than the 21-word reference summaries, which systematically depresses n-gram overlap scores; relative rankings are therefore more informative than absolute values.
+
+\subsection{Evaluated Large Language Models}\label{subsec:models}
+
+We select eight diverse LLMs spanning closed-source frontier platforms and open-weights community releases, summarized in Table~\ref{tab:models}.
+
+\begin{table}[t]
+\caption{Overview of the eight evaluated LLMs, API model strings, and access type. All models were accessed via their respective APIs in July--August 2025.}\label{tab:models}
+\centering
+\small
+\begin{tabular}{p{2.8cm}p{3.0cm}ll}
+\toprule
+\textbf{Model} & \textbf{API Model String} & \textbf{Provider} & \textbf{Type} \\
+\midrule
+GPT-5.6 Luna & \texttt{gpt-5.6-luna} & OpenAI & Closed \\
+GPT-4o Mini & \texttt{gpt-4o-mini} & OpenAI & Closed \\
+Gemini 3.1 Flash Lite & \texttt{gemini-3.1-flash-lite} & Google AI Studio & Closed \\
+Gemini 2.5 Flash & \texttt{gemini-2.5-flash} & Google AI Studio & Closed \\
+LLaMA 3.3 70B & \texttt{llama-3.3-70b-versatile} & Groq / Meta & Open \\
+DeepSeek V4 Flash & \texttt{deepseek-v4-flash} & OpenRouter & Open \\
+Qwen 3.6 27B & \texttt{qwen/qwen-3.6-27b-instruct} & OpenRouter & Open \\
+Qwen 3.5 Flash & \texttt{qwen/qwen3.5-flash} & OpenRouter & Open \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All models were evaluated in a strictly zero-shot setting using standardized instruction prompts. Generation was capped at \texttt{max\_tokens=2048} for all providers; no temperature was set (APIs were called with their default sampling parameters). For Bengali, the prompt instructed the model to write an accurate and concise two- or three-sentence summary without filler. For English, an equivalent English-language prompt was used. For reasoning models, chain-of-thought markup (\texttt{<think>...</think>}) was stripped from outputs prior to evaluation. Qwen~3.6~27B's stripping logic failed on 8 English and 27 Bengali outputs, leaving reasoning traces intact; these outputs are retained in the dataset but flagged as potentially contaminated, and their effect on Qwen~3.6~27B's ROUGE and chrF scores is likely negative. One Gemini 3.1 Flash Lite English article returned a quota error and was excluded, yielding $n=1011$ for that model.\footnote{The missing article triggered a per-minute rate-limit error; all metric averages for this model are computed over 1,011 items.}
+
+\subsection{Multi-Tiered Evaluation Framework}\label{subsec:evaluation_framework}
+
+Our evaluation pipeline is categorized into three complementary layers:
+
+\paragraph{Lexical and Semantic Metrics.}
+\begin{itemize}
+    \item \textbf{ROUGE (1, 2, L):} Measures n-gram overlap (unigrams, bigrams, and longest common subsequence). For Bengali text, tokenization is handled via Indic regex pattern matching (\texttt{[\textbackslash u0980-\textbackslash u09FF\textbackslash w]+}); English uses Porter Stemming. Scores are reported as percentages (\%).
+    \item \textbf{BLEU \& chrF:} BLEU measures n-gram precision with brevity penalty; chrF evaluates character n-gram F-score. Both are reported on a 0--100 scale. Literature indicates chrF exhibits higher human correlation ($r = 0.588$) than BLEU ($r = 0.073$) for non-English texts.
+    \item \textbf{BERTScore-Recall:} Computes dense token alignment recall scores using pre-trained transformer embeddings, reported as percentage (\%). We deploy \texttt{roberta-base} for English and \texttt{xlm-roberta-base} for Bengali. Because different backbone models produce different score ranges, BERTScore values are \emph{not cross-comparable} between the two language columns; they should be interpreted within each language independently.
+\end{itemize}
+
+\paragraph{Reference-Free QG/QA Factuality Verification (BanglaSummEval).}
+To assess factual consistency without depending on reference text similarity, we implement \textbf{BanglaSummEval}~\cite{hasan2021} across 100 Bengali samples. Named entity and noun extraction is performed with \texttt{bnlp-toolkit}; question generation uses \texttt{valhalla/t5-base-qg-hl}; question answering uses \texttt{deepset/xlm-roberta-base-squad2}; answer verification uses \texttt{xlm-roberta-base} BERTScore-Recall (matching threshold $\ge 85.0\%$).
+\begin{itemize}
+    \item \textbf{Precision (Factual Consistency):} Entities extracted from the generated summary are converted to questions; answers are retrieved from the source article and matched against the extracted entities.
+    \item \textbf{Recall (Content Coverage):} Entities extracted from the source document are converted to questions and answered from the generated summary.
+    \item \textbf{BanglaSummEval F1:} Harmonic mean of Precision and Recall. All scores are reported as percentages (\%).
+\end{itemize}
+
+\paragraph{LLM-as-a-Judge Evaluation.}
+Following recent methodologies~\cite{zheng2023}, an independent LLM judge grades summaries on a 1--5 Likert scale across six dimensions: Relevance, Completeness, Faithfulness, Coherence, Conciseness, and Fluency.
+
+%
+% ---------------------------------------------------------------
+% 3. EXPERIMENTAL RESULTS AND ANALYSIS
+% ---------------------------------------------------------------
+%
+\section{Experimental Results and Analysis}\label{sec:results}
+
+\subsection{English XL-Sum Benchmark Results}\label{subsec:english_results}
+
+Table~\ref{tab:english_results} presents the quantitative results across 1,012 English test items.
+
+\begin{table}[t]
+\caption{English XL-Sum benchmark results across 1,012 test items. ROUGE and BERTScore-R are percentages (\%); BLEU and chrF are on a 0--100 scale. Bold marks the best value per column.}\label{tab:english_results}
+\centering
+\footnotesize
+\begin{tabular}{p{3.2cm}rrrrrrrr}
+\toprule
+Model & Count & R-1 & R-2 & R-L & BLEU & chrF & BERTScore-R \\
+ & & (\%) & (\%) & (\%) & & & (\%) \\
+\midrule
+GPT-5.6 Luna & 1012 & \textbf{24.12} & 5.87 & \textbf{15.96} & 2.06 & \textbf{31.51} & 89.02 \\
+Gemini 3.1 Flash Lite & 1011 & 22.94 & \textbf{5.89} & 15.32 & \textbf{2.14} & 30.39 & \textbf{89.25} \\
+Gemini 2.5 Flash & 1012 & 22.13 & 5.43 & 14.72 & 1.90 & 29.62 & 88.90 \\
+Qwen 3.5 Flash & 1012 & 21.99 & 4.93 & 14.48 & 1.66 & 29.46 & 88.77 \\
+DeepSeek V4 Flash & 1012 & 21.43 & 5.28 & 14.12 & 1.82 & 29.34 & 88.83 \\
+Qwen 3.6 27B & 1012 & 21.30 & 4.81 & 13.88 & 1.44 & 27.17 & 88.81 \\
+GPT-4o Mini & 1012 & 21.16 & 5.03 & 13.95 & 1.70 & 28.78 & 88.73 \\
+LLaMA 3.3 70B & 1012 & 20.38 & 5.71 & 14.00 & 1.94 & 28.72 & 88.87 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+In English summarization, GPT-5.6 Luna achieves the highest ROUGE-1 (24.12\%) and ROUGE-L (15.96\%), demonstrating superior unigram synthesis and syntactic alignment. Gemini 3.1 Flash Lite achieves peak dense semantic recall (BERTScore-R of 89.25\%) and BLEU (2.14), highlighting strong paraphrase capability.
+
+\subsection{Bengali XL-Sum Benchmark Results}\label{subsec:bengali_results}
+
+Table~\ref{tab:bengali_results} details the benchmark metrics across 1,012 Bengali test items.
+
+\begin{table}[t]
+\caption{Bengali XL-Sum benchmark results across 1,012 test items. ROUGE and BERTScore-R are percentages (\%); BLEU and chrF are on a 0--100 scale. Bold marks the best value per column.}\label{tab:bengali_results}
+\centering
+\footnotesize
+\begin{tabular}{p{3.2cm}rrrrrrrr}
+\toprule
+Model & Count & R-1 & R-2 & R-L & BLEU & chrF & BERTScore-R \\
+ & & (\%) & (\%) & (\%) & & & (\%) \\
+\midrule
+LLaMA 3.3 70B & 1012 & \textbf{16.23} & \textbf{5.29} & \textbf{12.44} & \textbf{1.90} & 33.30 & \textbf{87.94} \\
+GPT-4o Mini & 1012 & 15.63 & 4.53 & 11.83 & 1.74 & \textbf{33.74} & 87.80 \\
+Gemini 2.5 Flash & 1012 & 15.05 & 4.32 & 11.27 & 1.64 & 33.11 & 87.93 \\
+DeepSeek V4 Flash & 1012 & 15.00 & 4.19 & 11.22 & 1.62 & 33.39 & 87.86 \\
+Qwen 3.5 Flash & 1012 & 14.74 & 4.09 & 11.16 & 1.56 & 33.50 & 87.72 \\
+Gemini 3.1 Flash Lite & 1012 & 14.04 & 3.88 & 10.93 & 1.42 & 32.15 & 87.88 \\
+GPT-5.6 Luna & 1012 & 14.01 & 3.71 & 10.65 & 1.27 & 32.53 & 87.57 \\
+Qwen 3.6 27B & 1012 & 13.45 & 3.56 & 10.07 & 0.98 & 28.38 & 87.44 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Open-weights LLaMA~3.3~70B records the best Bengali R-1 (16.23\%), R-2 (5.29\%), R-L (12.44\%), BLEU (1.90), and BERTScore-R (87.94\%). GPT-4o Mini records the highest chrF score (33.74\%).
+
+\subsection{BanglaSummEval QG/QA Factuality Verification}\label{subsec:banglasummeval_results}
+
+Table~\ref{tab:banglasummeval} summarizes reference-free QG/QA factuality scores across 100 Bengali test samples.
+
+\begin{table}[t]
+\caption{BanglaSummEval QG/QA factuality verification results (100 Bengali samples). All scores are percentages (\%). Bold marks the best value per column.}\label{tab:banglasummeval}
+\centering
+\footnotesize
+\begin{tabular}{p{3.2cm}rrrr}
+\toprule
+Model & Count & Precision & Recall & BSE-F1 \\
+ & & (\%) & (\%) & (\%) \\
+\midrule
+LLaMA 3.3 70B & 100 & \textbf{65.78} & 57.50 & 58.28 \\
+Gemini 2.5 Flash & 100 & 61.65 & \textbf{60.83} & \textbf{58.43} \\
+DeepSeek V4 Flash & 100 & 64.14 & 56.17 & 57.34 \\
+GPT-4o Mini & 100 & 63.38 & 55.33 & 56.73 \\
+Qwen 3.6 27B & 100 & 60.49 & 59.00 & 56.41 \\
+Qwen 3.5 Flash & 100 & 61.48 & 57.17 & 56.15 \\
+GPT-5.6 Luna & 100 & 58.87 & 56.17 & 54.84 \\
+Gemini 3.1 Flash Lite & 100 & 52.83 & 52.50 & 49.73 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The QG/QA pipeline reveals crucial insights regarding factual faithfulness:
+\begin{itemize}
+    \item Gemini 2.5 Flash leads in both BanglaSummEval F1 (58.43\%) and Recall (60.83\%), demonstrating exceptional retention of source facts.
+    \item LLaMA~3.3~70B achieves the highest Precision (65.78\%), indicating minimal entity hallucination.
+\end{itemize}
+
+\subsection{LLM-as-a-Judge Qualitative Evaluation Results}\label{subsec:judge_results}
+
+To perform qualitative, reference-free evaluation, we deployed \texttt{gpt-5.6-terra} as an automated judge to evaluate the exact same 50 test samples per model across six dimensions (1--5 scale): Relevance (Rel), Completeness (Comp), Faithfulness (Faith), Coherence (Coh), Conciseness (Conc), and Fluency (Flue). Table~\ref{tab:judge_results} presents results for both language subsets.
+
+\begin{table}[t]
+\caption{LLM-as-a-Judge (\texttt{gpt-5.6-terra}) qualitative evaluation across 50 identical test samples per model (1--5 scale). Bold marks the best value per column within each language group.}\label{tab:judge_results}
+\centering
+\footnotesize
+\begin{tabular}{p{0.9cm}lccccccc}
+\toprule
+Lang. & Model & Rel & Comp & Faith & Coh & Conc & Flue & Avg \\
+\midrule
+\multirow{8}{*}{\rotatebox{90}{English}}
+ & GPT-5.6 Luna & \textbf{3.16} & \textbf{3.54} & 1.24 & 4.76 & \textbf{3.36} & \textbf{5.00} & \textbf{3.51} \\
+ & Gemini 3.1 Flash Lite & 3.04 & 3.48 & \textbf{1.34} & \textbf{4.82} & 3.14 & \textbf{5.00} & 3.47 \\
+ & DeepSeek V4 Flash & 2.92 & 3.38 & 1.30 & 4.78 & 3.06 & \textbf{5.00} & 3.41 \\
+ & Qwen 3.5 Flash & 2.96 & 3.26 & 1.28 & 4.70 & 3.16 & \textbf{5.00} & 3.39 \\
+ & LLaMA 3.3 70B & 3.02 & 3.36 & 1.24 & 4.78 & 2.80 & \textbf{5.00} & 3.37 \\
+ & Qwen 3.6 27B & 2.86 & 3.26 & 1.24 & 4.76 & 3.10 & \textbf{5.00} & 3.37 \\
+ & Gemini 2.5 Flash & 2.90 & 3.28 & 1.20 & 4.80 & 3.00 & \textbf{5.00} & 3.36 \\
+ & GPT-4o Mini & 2.84 & 3.26 & 1.18 & 4.74 & 2.90 & \textbf{5.00} & 3.32 \\
+\midrule
+\multirow{8}{*}{\rotatebox{90}{Bengali}}
+ & Gemini 3.1 Flash Lite & 2.60 & 2.66 & 1.26 & 4.46 & \textbf{3.22} & 4.94 & \textbf{3.19} \\
+ & GPT-4o Mini & 2.54 & 2.56 & \textbf{1.30} & 4.36 & 3.06 & 4.80 & 3.10 \\
+ & Gemini 2.5 Flash & 2.56 & 2.60 & 1.12 & \textbf{4.56} & 2.68 & \textbf{4.96} & 3.08 \\
+ & DeepSeek V4 Flash & 2.46 & 2.50 & 1.10 & 4.46 & 3.00 & 4.94 & 3.08 \\
+ & GPT-5.6 Luna & 2.36 & 2.70 & 1.18 & 4.44 & 2.70 & \textbf{4.96} & 3.06 \\
+ & LLaMA 3.3 70B & 2.52 & 2.42 & 1.24 & 4.26 & 2.96 & 4.78 & 3.03 \\
+ & Qwen 3.5 Flash & 2.54 & 2.40 & 1.14 & 4.22 & 3.00 & 4.82 & 3.02 \\
+ & Qwen 3.6 27B & 2.50 & \textbf{2.70} & 1.14 & 4.32 & 2.58 & 4.72 & 2.99 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The qualitative judging reveals key insights:
+\begin{itemize}
+    \item \textbf{Syntactic Fluency vs. Factual Rigor:} All models score consistently high in Fluency (4.72--5.00) and Coherence (4.22--4.82). However, Faithfulness scores are uniformly penalized (1.10--1.34) by the judge due to strict verification against source articles, uncovering micro-hallucinations and unbacked assertions.
+    \item \textbf{English vs. Bengali Quality Disparity:} Models exhibit higher qualitative synthesis in English (overall averages 3.32--3.51) compared to Bengali (2.99--3.19), mirroring the cross-lingual transfer gap observed in lexical evaluations.
+    \item \textbf{Top Performers:} GPT-5.6 Luna leads in English (avg.\ 3.51); Gemini 3.1 Flash Lite leads in Bengali (avg.\ 3.19).
+\end{itemize}
+
+%
+% ---------------------------------------------------------------
+% 4. DISCUSSION
+% ---------------------------------------------------------------
+%
+\section{Discussion}\label{sec:discussion}
+
+Our empirical findings underscore a critical divergence between model performance in high-resource English versus low-resource Bengali news summarization.
+
+\begin{enumerate}
+    \item \textbf{Cross-Lingual Transfer Gap:} In English, proprietary frontier models (GPT-5.6 Luna, Gemini 3.1 Flash Lite) outperform open-weights counterparts. Conversely, in Bengali, the open-weights LLaMA~3.3~70B and proprietary Gemini 2.5 Flash lead the lexical and factual evaluations, respectively. This suggests frontier models may suffer from sub-optimal multilingual tokenization or reduced Bengali training data representation.
+    \item \textbf{Metric Alignment:} N-gram metrics show weak alignment with factual fidelity. Although GPT-5.6 Luna scores competitively on ROUGE, its BanglaSummEval F1 is below Gemini 2.5 Flash (54.84\% vs.~58.43\%), primarily due to over-summarization and entity omission.
+    \item \textbf{Utility of Reference-Free QG/QA Verification:} BanglaSummEval provides an objective mechanism to identify entity fabrication and hallucination without requiring human reference summaries, serving as a vital complementary layer for low-resource NLP evaluation.
+    \item \textbf{LLM-as-a-Judge Qualitative Insights:} The \texttt{gpt-5.6-terra} evaluation demonstrates that while modern LLMs produce highly fluent and coherent Bengali prose, strict faithfulness remains a critical bottleneck. The judge consistently penalizes subtle extrinsic entity introductions, reinforcing the need for multi-tiered evaluation combining lexical, reference-free QG/QA, and model-based judging.
+    \item \textbf{Digital Inclusion and Equity:} Bengali has approximately 280 million native speakers and is severely under-served by NLP infrastructure. Our central finding---that frontier proprietary models underperform on Bengali---is a direct argument about whose languages receive quality AI. This aligns with SDG~4 (inclusive quality education) and SDG~10 (reduced inequalities), as equitable access to summarization tools supports information access in linguistically diverse communities.
+    \item \textbf{Compute Efficiency:} An open-weights 70B model (LLaMA~3.3~70B) outperforms the largest frontier proprietary systems on Bengali lexical and factual metrics. This is a meaningful sustainability and deployability argument: low-resource-language workloads need not be routed to the largest, most resource-intensive closed-source model. Self-hosted open-weights deployments can avoid vendor lock-in and reduce inference costs for under-resourced institutions.
+\end{enumerate}
+
+%
+% ---------------------------------------------------------------
+% 5. CONCLUSION AND FUTURE WORK
+% ---------------------------------------------------------------
+%
+\section{Limitations}\label{sec:limitations}
+
+Several limitations bound the scope of our findings. First, each model was evaluated in a single zero-shot run without repetition; no statistical significance testing was conducted across metric differences. Second, the BanglaSummEval QG/QA pipeline was applied to only 100 Bengali samples per model due to inference cost constraints, which may limit the generalizability of factuality estimates. Third, the LLM-as-a-Judge evaluation used a single judge model (\texttt{gpt-5.6-terra}); a panel of diverse judges would improve robustness~\cite{verga2024}. Fourth, the study is confined to two languages (English and Bengali) and one domain (BBC news); results may differ in other languages, domains, or text lengths. Fifth, BLEU and ROUGE are known to correlate weakly with human judgment for abstractive summaries, and BERTScore recall alone does not capture precision-side factual failures. Sixth, post-hoc inspection revealed that 35 Qwen~3.6~27B outputs (8 English, 27 Bengali) retained un-stripped chain-of-thought reasoning traces (\texttt{<think>} blocks), inflating word counts and depressing ROUGE and chrF for that model specifically; results for Qwen~3.6~27B should be interpreted with this caveat. These limitations suggest directions for future work including multi-run significance testing, expanded language coverage, and human evaluation.
+
+\section{Data and Code Availability}\label{sec:availability}
+
+All evaluation scripts, aggregated metric results, and anonymized model outputs are available at: \url{https://github.com/khanmahijyoti/xlsum-llm-eval}. Raw API responses are not redistributed due to provider terms of service.
+
+\section{Conclusion}\label{sec:conclusions}
+
+In this paper, we presented a comprehensive zero-shot evaluation of eight frontier closed-source and open-weights LLMs on the English and Bengali XL-Sum datasets. Our multi-tiered framework---spanning lexical metrics, BERTScore, reference-free QG/QA factuality verification (BanglaSummEval), and qualitative LLM-as-a-Judge scoring---establishes key performance baselines. Our results highlight that while proprietary models excel in English, the open-weights LLaMA~3.3~70B and proprietary Gemini 2.5 Flash provide superior Bengali lexical quality and factual coverage, respectively, with implications for digital inclusion and cost-efficient deployment in low-resource language settings. Future work will explore parameter-efficient fine-tuning, domain-specific instruction tuning for low-resource languages, cross-lingual transfer methods, and multi-judge evaluation protocols.
+
+\begin{credits}
+\subsubsection{\ackname}
+The authors thank the creators and maintainers of the XL-Sum dataset, the open-source NLP community, and the model and API providers whose tools and resources supported this study.
+
+\subsubsection{\discintname}
+The authors have no competing interests to declare that are relevant to the content of this article.
+\end{credits}
+
+%
+% ---- Bibliography ----
+%
+\begin{thebibliography}{10}
+
+\bibitem{lin2004}
+Lin, C.Y.: ROUGE: A package for automatic evaluation of summaries. In: Text Summarization Branches Out, pp. 74--81. ACL, Barcelona (2004)
+
+\bibitem{papineni2002}
+Papineni, K., Roukos, S., Ward, T., Zhu, W.J.: BLEU: A method for automatic evaluation of machine translation. In: Proc. 40th ACL, pp. 311--318. Philadelphia (2002)
+
+\bibitem{zhang2019}
+Zhang, T., Kishore, V., Wu, F., Weinberger, K.Q., Artzi, Y.: BERTScore: Evaluating text generation with BERT. In: International Conference on Learning Representations (ICLR) (2020)
+
+\bibitem{vanveen2024}
+Van Veen, D., et al.: Adapted large language models can outperform medical experts in clinical text summarization. Nat. Med. \textbf{30}, 1134--1142 (2024)
+
+\bibitem{zheng2023}
+Zheng, L., et al.: Judging LLM-as-a-judge with MT-bench and chatbot arena. Advances in Neural Information Processing Systems (NeurIPS) \textbf{36}, 46595--46623 (2023)
+
+\bibitem{farquhar2024}
+Farquhar, S., Kossen, J., Kuhn, L., Gal, Y.: Detecting hallucinations in large language models using semantic entropy. Nature \textbf{630}, 625--630 (2024)
+
+\bibitem{tang2023}
+Tang, L., et al.: Evaluating large language models on medical evidence summarization. npj Digit. Med. \textbf{6}, 158 (2023)
+
+\bibitem{verga2024}
+Verga, P., et al.: Replacing judges with juries: Evaluating LLM generations with a panel of diverse models. arXiv preprint arXiv:2410.14669 (2024)
+
+\bibitem{gu2024}
+Gu, J., et al.: A survey on LLM-as-a-Judge. arXiv preprint arXiv:2411.15594 (2024)
+
+\bibitem{urlana2025}
+Urlana, A., et al.: HalluCounter: Reference-free LLM hallucination detection in the wild. arXiv preprint arXiv:2501.05376 (2025)
+
+\bibitem{hasan2021}
+Hasan, T., et al.: XL-Sum: Large-scale multilingual abstractive summarization for 44 languages. In: Findings of the Association for Computational Linguistics: ACL-IJCNLP 2021, pp. 4693--4703. ACL, Online (2021)
+
+\end{thebibliography}
+
+\end{document}

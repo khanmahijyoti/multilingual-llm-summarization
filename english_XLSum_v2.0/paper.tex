@@ -48,7 +48,7 @@ However, a significant body of recent literature highlights two major vulnerabil
     \item \textbf{Factual Inconsistency \& Hallucination:} Standard surface-level lexical metrics such as BLEU and ROUGE evaluate n-gram precision but penalize valid abstractive paraphrasing. Crucially, they fail to detect semantic fabrications and factual hallucinations, which pose high risks in real-world deployments~\cite{farquhar2024,tang2023}.
 \end{enumerate}
 
-To address these challenges, this paper presents a comprehensive empirical evaluation of eight state-of-the-art LLMs on the \textbf{XL-Sum benchmark} (1,012 test items each for English and Bengali). Beyond standard automatic metrics (ROUGE-1, ROUGE-2, ROUGE-L, BLEU, chrF, and BERTScore-Recall), we implement the reference-free \textbf{BanglaSummEval} QG/QA factuality pipeline and an \textbf{LLM-as-a-Judge} framework that scores coherence, consistency, fluency, and relevance.
+To address these challenges, this paper presents a comprehensive empirical evaluation of eight state-of-the-art LLMs on the \textbf{XL-Sum benchmark} (1,012 test items each for English and Bengali). Beyond standard automatic metrics (ROUGE-1, ROUGE-2, ROUGE-L, BLEU, chrF, and BERTScore-Recall), we implement the reference-free \textbf{BanglaSummEval} QG/QA factuality pipeline and an \textbf{LLM-as-a-Judge} framework that scores relevance, completeness, faithfulness, coherence, conciseness, and fluency.
 
 The primary contributions of this work are summarized as follows:
 \begin{itemize}
@@ -60,7 +60,111 @@ The primary contributions of this work are summarized as follows:
 
 %
 % ---------------------------------------------------------------
-% 2. MATERIALS AND METHODS
+% 2. RELATED WORK
+% ---------------------------------------------------------------
+%
+\section{Related Work}\label{sec:related}
+
+\subsection{Multilingual and Bengali Abstractive Summarization}
+
+Neural abstractive summarization matured through pre-trained encoder--decoder
+architectures such as BART~\cite{lewis2020} and PEGASUS~\cite{zhang2020pegasus},
+evaluated predominantly on English corpora like CNN/DailyMail and
+XSum~\cite{narayan2018}. Multilingual coverage followed with
+mT5~\cite{xue2021}, which extended the text-to-text framework to 101 languages,
+and with the release of XL-Sum~\cite{hasan2021}, a professionally annotated
+BBC-derived summarization corpus spanning 44 languages including Bengali.
+CrossSum~\cite{hasan2023} later generalized this to cross-lingual
+article--summary pairs.
+
+For Bengali specifically, BanglaT5 and the accompanying BanglaNLG
+benchmark~\cite{bhattacharjee2023} established fine-tuned baselines for
+generation tasks, while IndicBART~\cite{dabre2022} targeted Indic languages
+through a shared orthographic representation. These efforts rely on
+task-specific fine-tuning of comparatively small models. Our work is
+complementary: we assess whether general-purpose LLMs, prompted zero-shot and
+without any Bengali-specific adaptation, are competitive in this setting.
+
+\subsection{LLMs as Zero-Shot Summarizers}
+
+Instruction-tuned LLMs summarize competently without fine-tuning. Goyal et
+al.~\cite{goyal2022} found that human annotators preferred GPT-3 summaries over
+those from fine-tuned systems even though the LLM scored lower on ROUGE, and
+Zhang et al.~\cite{zhang2024news} reported that instruction-tuned LLM summaries
+approach freelance-writer quality. Both studies are English-only.
+
+Evidence for equally strong cross-lingual transfer is thinner. A recognized
+contributing factor is tokenization: subword vocabularies trained on
+English-dominant corpora fragment non-Latin scripts far more
+aggressively~\cite{rust2021}, which inflates sequence length, raises API cost,
+and consumes budget that would otherwise carry semantic
+content~\cite{ahia2023,petrov2023}. Bengali, with its Brahmic script and rich
+inflectional morphology, is affected directly. This motivates our decision to
+report per-model completion rates alongside quality metrics rather than
+assuming that every prompt yields a usable summary.
+
+\subsection{Automatic Evaluation of Summaries}
+
+ROUGE~\cite{lin2004} and BLEU~\cite{papineni2002} remain standard despite
+well-documented weaknesses: they reward surface overlap and penalize valid
+paraphrase. chrF~\cite{popovic2015} operates over character n-grams and
+correlates better with human judgment for morphologically rich languages, which
+is why we report it alongside word-level metrics. Embedding-based measures such
+as BERTScore~\cite{zhang2019} capture semantic similarity but compress into a
+narrow band and depend on the backbone encoder, so scores computed with
+different backbones are not directly comparable.
+
+SummEval~\cite{fabbri2021} demonstrated systematically weak correlation between
+these automatic metrics and human ratings of coherence, consistency, fluency,
+and relevance in English. Whether that finding transfers to low-resource
+languages has received little attention, and it is a question our multi-tiered
+design is intended to probe.
+
+\subsection{Reference-Free Factuality Verification}
+
+Maynez et al.~\cite{maynez2020} showed that abstractive systems hallucinate
+content unsupported by the source and that n-gram metrics do not detect it.
+Two families of detectors emerged: entailment-based classifiers such as
+FactCC~\cite{kryscinski2020}, and question generation/answering pipelines that
+generate questions from one text and answer them against the other, including
+FEQA~\cite{durmus2020}, QAGS~\cite{wang2020}, QuestEval~\cite{scialom2021}, and
+QAFactEval~\cite{fabbri2022}. Recent work extends reference-free hallucination
+detection to open-ended LLM output~\cite{urlana2025,farquhar2024}.
+
+These pipelines are overwhelmingly English, since they depend on QG and QA
+models trained on English resources. BanglaSummEval~\cite{rafid2026} adapts the
+QG/QA paradigm to Bengali summarization, and we adopt it here as our
+reference-free factuality layer.
+
+\subsection{LLM-as-a-Judge}
+
+Using a strong LLM to grade generated text scales far better than human
+annotation. Zheng et al.~\cite{zheng2023} showed judge--human agreement
+comparable to inter-annotator agreement on English chat, and
+G-Eval~\cite{liu2023} applied chain-of-thought judging to summarization
+specifically. A growing literature catalogues the failure modes: position and
+verbosity bias~\cite{wang2023unfair}, self-preference toward outputs from the
+judge's own family, and general calibration difficulties~\cite{gu2024}.
+Verga et al.~\cite{verga2024} propose panels of smaller judges as a mitigation.
+
+Critically, nearly all validation of LLM judges has been conducted in English.
+Whether a judge's scores remain meaningful when grading a low-resource language
+is largely untested, and our results speak to this directly.
+
+\subsection{Positioning of This Work}
+
+Prior work has examined each of these threads in isolation: multilingual
+summarization corpora, zero-shot LLM summarization in English, reference-free
+factuality metrics, and LLM-as-a-Judge protocols. To our knowledge, no study
+applies all three evaluation layers simultaneously to a matched English and
+Bengali test set across a common pool of current-generation frontier and
+open-weights LLMs. Doing so lets us ask not only which models summarize Bengali
+well, but whether the evaluation instruments themselves agree when applied
+outside English --- a question our results answer in the negative.
+
+%
+% ---------------------------------------------------------------
+% 3. MATERIALS AND METHODS
 % ---------------------------------------------------------------
 %
 \section{Materials and Methods}\label{sec:methods}
@@ -69,14 +173,14 @@ The primary contributions of this work are summarized as follows:
 
 We utilize the \textbf{XL-Sum dataset}~\cite{hasan2021}, a large-scale multilingual abstractive summarization corpus derived from BBC news articles across 44 languages. The English XL-Sum test partition contains 11,535 articles and the Bengali test partition contains 1,012 articles. To enable tractable, paired evaluation across both languages, we randomly sample 1,012 English test articles using a fixed seed (\texttt{random\_state=42}); the full Bengali test split is used without subsampling. Each data instance contains a document ID, the full article text, and a professionally annotated reference summary (mean reference length: 21 words for both languages).
 
-Generated summary output lengths (measured in whitespace-tokenized words) varied substantially by model. Excluding 35 outputs from Qwen~3.6~27B that contained un-stripped reasoning traces (see below), English outputs averaged 73 words (median 72, range 3--124) and Bengali outputs averaged 57 words (median 57, range 1--103). All models produced outputs substantially longer than the 21-word reference summaries, which systematically depresses n-gram overlap scores; relative rankings are therefore more informative than absolute values.
+Generated summary output lengths (measured in whitespace-tokenized words) varied substantially by model. Over all valid completed generations, English outputs averaged 73 words (median 72, range 2--124) and Bengali outputs averaged 58 words (median 57, range 3--273). All models produced outputs substantially longer than the 21-word reference summaries, which systematically depresses n-gram overlap scores. Notably, the Bengali maximum of 273 words was generated by LLaMA~3.3~70B, which occasionally ignored the concise length instruction in favor of extreme verbosity. Relative rankings across these models are therefore more informative than absolute values.
 
 \subsection{Evaluated Large Language Models}\label{subsec:models}
 
 We select eight diverse LLMs spanning closed-source frontier platforms and open-weights community releases, summarized in Table~\ref{tab:models}.
 
 \begin{table}[t]
-\caption{Overview of the eight evaluated LLMs, API model strings, and access type. All models were accessed via their respective APIs in July--August 2025.}\label{tab:models}
+\caption{Overview of the eight evaluated LLMs, API model strings, and access type. All models were accessed via their respective APIs in July--August 2026.}\label{tab:models}
 \centering
 \small
 \begin{tabular}{p{2.8cm}p{3.0cm}ll}
@@ -95,7 +199,7 @@ Qwen 3.5 Flash & \texttt{qwen/qwen3.5-flash} & OpenRouter & Open \\
 \end{tabular}
 \end{table}
 
-All models were evaluated in a strictly zero-shot setting using standardized instruction prompts. Generation was capped at \texttt{max\_tokens=2048} for all providers; no temperature was set (APIs were called with their default sampling parameters). For Bengali, the prompt instructed the model to write an accurate and concise two- or three-sentence summary without filler. For English, an equivalent English-language prompt was used. For reasoning models, chain-of-thought markup (\texttt{<think>...</think>}) was stripped from outputs prior to evaluation. Qwen~3.6~27B's stripping logic failed on 8 English and 27 Bengali outputs, leaving reasoning traces intact; these outputs are retained in the dataset but flagged as potentially contaminated, and their effect on Qwen~3.6~27B's ROUGE and chrF scores is likely negative. One Gemini 3.1 Flash Lite English article returned a quota error and was excluded, yielding $n=1011$ for that model.\footnote{The missing article triggered a per-minute rate-limit error; all metric averages for this model are computed over 1,011 items.}
+All models were evaluated in a strictly zero-shot setting using standardized instruction prompts. Generation was capped at \texttt{max\_tokens=2048} for all providers; no temperature was set (APIs were called with their default sampling parameters). For Bengali, the prompt instructed the model to write an accurate and concise two- or three-sentence summary without filler. For English, an equivalent English-language prompt was used. For reasoning models, chain-of-thought markup (\texttt{<think>...</think>}) was stripped from outputs prior to evaluation. Post-hoc inspection revealed that 35 Qwen~3.6~27B outputs (8 English, 27 Bengali) and 1 Qwen~3.5~Flash Bengali output failed to close their reasoning traces or left partial tags. For the single Qwen~3.5~Flash output, the stray tag was stripped and the valid summary underneath was retained in the evaluation set. Conversely, the 35 Qwen~3.6~27B outputs exhausted the 2,048-token budget during reasoning and terminated before emitting a summary. Because these produced zero-length outputs after stripping, we exclude them from quality metric aggregation. Additionally, DeepSeek V4 Flash generated three explicit cross-lingual instruction-following failures (1 English, 2 Bengali) where it refused the prompt entirely in Chinese (\emph{``作为一个人工智能语言模型...''}). Because these refusals contained no whitespace, they parsed as a single whitespace-delimited unit. Treating non-summaries as completion failures, we explicitly excluded these three refusals from quality aggregation. Consequently, Qwen~3.6~27B successfully completed 1,004/1,012 English (99.2\%) and 985/1,012 Bengali (97.3\%) generations; DeepSeek V4 Flash completed 1,011/1,012 English (99.9\%) and 1,010/1,012 Bengali (99.8\%). Quality metrics across all tables are reported over valid completed generations only. One Gemini 3.1 Flash Lite English article returned a quota error and was excluded, yielding $n=1011$ for that model.\footnote{The missing article triggered a per-minute rate-limit error; all metric averages for this model are computed over 1,011 items.}
 
 \subsection{Multi-Tiered Evaluation Framework}\label{subsec:evaluation_framework}
 
@@ -104,20 +208,20 @@ Our evaluation pipeline is categorized into three complementary layers:
 \paragraph{Lexical and Semantic Metrics.}
 \begin{itemize}
     \item \textbf{ROUGE (1, 2, L):} Measures n-gram overlap (unigrams, bigrams, and longest common subsequence). For Bengali text, tokenization is handled via Indic regex pattern matching (\texttt{[\textbackslash u0980-\textbackslash u09FF\textbackslash w]+}); English uses Porter Stemming. Scores are reported as percentages (\%).
-    \item \textbf{BLEU \& chrF:} BLEU measures n-gram precision with brevity penalty; chrF evaluates character n-gram F-score. Both are reported on a 0--100 scale. Literature indicates chrF exhibits higher human correlation ($r = 0.588$) than BLEU ($r = 0.073$) for non-English texts.
+    \item \textbf{BLEU \& chrF:} BLEU~\cite{papineni2002} measures n-gram precision with brevity penalty; chrF~\cite{popovic2015} evaluates character n-gram F-score. Both are reported on a 0--100 scale. Literature indicates chrF exhibits higher human correlation ($r = 0.588$) than BLEU ($r = 0.073$) for non-English texts.
     \item \textbf{BERTScore-Recall:} Computes dense token alignment recall scores using pre-trained transformer embeddings, reported as percentage (\%). We deploy \texttt{roberta-base} for English and \texttt{xlm-roberta-base} for Bengali. Because different backbone models produce different score ranges, BERTScore values are \emph{not cross-comparable} between the two language columns; they should be interpreted within each language independently.
 \end{itemize}
 
 \paragraph{Reference-Free QG/QA Factuality Verification (BanglaSummEval).}
-To assess factual consistency without depending on reference text similarity, we implement \textbf{BanglaSummEval}~\cite{hasan2021} across 100 Bengali samples. Named entity and noun extraction is performed with \texttt{bnlp-toolkit}; question generation uses \texttt{valhalla/t5-base-qg-hl}; question answering uses \texttt{deepset/xlm-roberta-base-squad2}; answer verification uses \texttt{xlm-roberta-base} BERTScore-Recall (matching threshold $\ge 85.0\%$).
+To assess factual consistency without depending on reference text similarity, we implement \textbf{BanglaSummEval}~\cite{rafid2026} across up to 100 Bengali test samples. Named entity and noun extraction is performed with \texttt{bnlp-toolkit}; question generation uses \texttt{valhalla/t5-base-qg-hl}; question answering uses \texttt{deepset/xlm-roberta-base-squad2}; answer verification uses \texttt{xlm-roberta-base} BERTScore-Recall (matching threshold $\ge 85.0\%$).
 \begin{itemize}
     \item \textbf{Precision (Factual Consistency):} Entities extracted from the generated summary are converted to questions; answers are retrieved from the source article and matched against the extracted entities.
     \item \textbf{Recall (Content Coverage):} Entities extracted from the source document are converted to questions and answered from the generated summary.
-    \item \textbf{BanglaSummEval F1:} Harmonic mean of Precision and Recall. All scores are reported as percentages (\%).
+    \item \textbf{BanglaSummEval F1:} Harmonic mean of Precision and Recall, computed per-sample and averaged across the test set. All scores are reported as percentages (\%).
 \end{itemize}
 
 \paragraph{LLM-as-a-Judge Evaluation.}
-Following recent methodologies~\cite{zheng2023}, an independent LLM judge grades summaries on a 1--5 Likert scale across six dimensions: Relevance, Completeness, Faithfulness, Coherence, Conciseness, and Fluency.
+Following recent methodologies~\cite{zheng2023}, an independent LLM judge grades summaries for a subset of 50 test samples per model on a 1--5 Likert scale across six dimensions: Relevance, Completeness, Faithfulness, Coherence, Conciseness, and Fluency.
 
 %
 % ---------------------------------------------------------------
@@ -128,23 +232,23 @@ Following recent methodologies~\cite{zheng2023}, an independent LLM judge grades
 
 \subsection{English XL-Sum Benchmark Results}\label{subsec:english_results}
 
-Table~\ref{tab:english_results} presents the quantitative results across 1,012 English test items.
+Table~\ref{tab:english_results} presents the quantitative results across the English test set.
 
 \begin{table}[t]
-\caption{English XL-Sum benchmark results across 1,012 test items. ROUGE and BERTScore-R are percentages (\%); BLEU and chrF are on a 0--100 scale. Bold marks the best value per column.}\label{tab:english_results}
+\caption{English XL-Sum benchmark results. Metrics are computed over valid completed generations (Valid count). ROUGE and BERTScore-R are percentages (\%); BLEU and chrF are on a 0--100 scale. Bold marks the best value per column.}\label{tab:english_results}
 \centering
 \footnotesize
-\begin{tabular}{p{3.2cm}rrrrrrrr}
+\begin{tabular}{p{3.2cm}rrrrrrr}
 \toprule
-Model & Count & R-1 & R-2 & R-L & BLEU & chrF & BERTScore-R \\
+Model & Valid & R-1 & R-2 & R-L & BLEU & chrF & BERTScore-R \\
  & & (\%) & (\%) & (\%) & & & (\%) \\
 \midrule
 GPT-5.6 Luna & 1012 & \textbf{24.12} & 5.87 & \textbf{15.96} & 2.06 & \textbf{31.51} & 89.02 \\
 Gemini 3.1 Flash Lite & 1011 & 22.94 & \textbf{5.89} & 15.32 & \textbf{2.14} & 30.39 & \textbf{89.25} \\
 Gemini 2.5 Flash & 1012 & 22.13 & 5.43 & 14.72 & 1.90 & 29.62 & 88.90 \\
 Qwen 3.5 Flash & 1012 & 21.99 & 4.93 & 14.48 & 1.66 & 29.46 & 88.77 \\
-DeepSeek V4 Flash & 1012 & 21.43 & 5.28 & 14.12 & 1.82 & 29.34 & 88.83 \\
-Qwen 3.6 27B & 1012 & 21.30 & 4.81 & 13.88 & 1.44 & 27.17 & 88.81 \\
+Qwen 3.6 27B & 1004 & 21.47 & 4.85 & 13.99 & 1.68 & 28.96 & 89.21 \\
+DeepSeek V4 Flash & 1011 & 21.46 & 5.28 & 14.13 & 1.82 & 29.36 & 89.18 \\
 GPT-4o Mini & 1012 & 21.16 & 5.03 & 13.95 & 1.70 & 28.78 & 88.73 \\
 LLaMA 3.3 70B & 1012 & 20.38 & 5.71 & 14.00 & 1.94 & 28.72 & 88.87 \\
 \bottomrule
@@ -155,25 +259,25 @@ In English summarization, GPT-5.6 Luna achieves the highest ROUGE-1 (24.12\%) an
 
 \subsection{Bengali XL-Sum Benchmark Results}\label{subsec:bengali_results}
 
-Table~\ref{tab:bengali_results} details the benchmark metrics across 1,012 Bengali test items.
+Table~\ref{tab:bengali_results} details the benchmark metrics across the Bengali test set.
 
 \begin{table}[t]
-\caption{Bengali XL-Sum benchmark results across 1,012 test items. ROUGE and BERTScore-R are percentages (\%); BLEU and chrF are on a 0--100 scale. Bold marks the best value per column.}\label{tab:bengali_results}
+\caption{Bengali XL-Sum benchmark results. Metrics are computed over valid completed generations (Valid count). ROUGE and BERTScore-R are percentages (\%); BLEU and chrF are on a 0--100 scale. Bold marks the best value per column.}\label{tab:bengali_results}
 \centering
 \footnotesize
-\begin{tabular}{p{3.2cm}rrrrrrrr}
+\begin{tabular}{p{3.2cm}rrrrrrr}
 \toprule
-Model & Count & R-1 & R-2 & R-L & BLEU & chrF & BERTScore-R \\
+Model & Valid & R-1 & R-2 & R-L & BLEU & chrF & BERTScore-R \\
  & & (\%) & (\%) & (\%) & & & (\%) \\
 \midrule
 LLaMA 3.3 70B & 1012 & \textbf{16.23} & \textbf{5.29} & \textbf{12.44} & \textbf{1.90} & 33.30 & \textbf{87.94} \\
 GPT-4o Mini & 1012 & 15.63 & 4.53 & 11.83 & 1.74 & \textbf{33.74} & 87.80 \\
 Gemini 2.5 Flash & 1012 & 15.05 & 4.32 & 11.27 & 1.64 & 33.11 & 87.93 \\
-DeepSeek V4 Flash & 1012 & 15.00 & 4.19 & 11.22 & 1.62 & 33.39 & 87.86 \\
+DeepSeek V4 Flash & 1010 & 15.03 & 4.20 & 11.24 & 1.58 & 33.43 & 87.88 \\
 Qwen 3.5 Flash & 1012 & 14.74 & 4.09 & 11.16 & 1.56 & 33.50 & 87.72 \\
 Gemini 3.1 Flash Lite & 1012 & 14.04 & 3.88 & 10.93 & 1.42 & 32.15 & 87.88 \\
 GPT-5.6 Luna & 1012 & 14.01 & 3.71 & 10.65 & 1.27 & 32.53 & 87.57 \\
-Qwen 3.6 27B & 1012 & 13.45 & 3.56 & 10.07 & 0.98 & 28.38 & 87.44 \\
+Qwen 3.6 27B & 985 & 13.82 & 3.65 & 10.34 & 1.37 & 32.40 & 87.58 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -185,19 +289,19 @@ Open-weights LLaMA~3.3~70B records the best Bengali R-1 (16.23\%), R-2 (5.29\%),
 Table~\ref{tab:banglasummeval} summarizes reference-free QG/QA factuality scores across 100 Bengali test samples.
 
 \begin{table}[t]
-\caption{BanglaSummEval QG/QA factuality verification results (100 Bengali samples). All scores are percentages (\%). Bold marks the best value per column.}\label{tab:banglasummeval}
+\caption{BanglaSummEval QG/QA factuality verification results (100 Bengali samples; 96 for Qwen 3.6 27B). All scores are percentages (\%). Bold marks the best value per column. Rows are sorted by BSE-F1.}\label{tab:banglasummeval}
 \centering
 \footnotesize
 \begin{tabular}{p{3.2cm}rrrr}
 \toprule
-Model & Count & Precision & Recall & BSE-F1 \\
+Model & Valid & Precision & Recall & BSE-F1 \\
  & & (\%) & (\%) & (\%) \\
 \midrule
-LLaMA 3.3 70B & 100 & \textbf{65.78} & 57.50 & 58.28 \\
 Gemini 2.5 Flash & 100 & 61.65 & \textbf{60.83} & \textbf{58.43} \\
+LLaMA 3.3 70B & 100 & \textbf{65.78} & 57.50 & 58.28 \\
 DeepSeek V4 Flash & 100 & 64.14 & 56.17 & 57.34 \\
+Qwen 3.6 27B & 96 & 61.69 & 58.16 & 57.02 \\
 GPT-4o Mini & 100 & 63.38 & 55.33 & 56.73 \\
-Qwen 3.6 27B & 100 & 60.49 & 59.00 & 56.41 \\
 Qwen 3.5 Flash & 100 & 61.48 & 57.17 & 56.15 \\
 GPT-5.6 Luna & 100 & 58.87 & 56.17 & 54.84 \\
 Gemini 3.1 Flash Lite & 100 & 52.83 & 52.50 & 49.73 \\
@@ -213,10 +317,10 @@ The QG/QA pipeline reveals crucial insights regarding factual faithfulness:
 
 \subsection{LLM-as-a-Judge Qualitative Evaluation Results}\label{subsec:judge_results}
 
-To perform qualitative, reference-free evaluation, we deployed \texttt{gpt-5.6-terra} as an automated judge to evaluate the exact same 50 test samples per model across six dimensions (1--5 scale): Relevance (Rel), Completeness (Comp), Faithfulness (Faith), Coherence (Coh), Conciseness (Conc), and Fluency (Flue). Table~\ref{tab:judge_results} presents results for both language subsets.
+To perform qualitative, reference-free evaluation, we deployed \texttt{gpt-5.6-terra} as an automated judge to evaluate the same test sample pool (50 items per model; 49 for Qwen 3.6 27B Bengali) across six dimensions (1--5 scale): Relevance (Rel), Completeness (Comp), Faithfulness (Faith), Coherence (Coh), Conciseness (Conc), and Fluency (Flue). Table~\ref{tab:judge_results} presents results for both language subsets.
 
 \begin{table}[t]
-\caption{LLM-as-a-Judge (\texttt{gpt-5.6-terra}) qualitative evaluation across 50 identical test samples per model (1--5 scale). Bold marks the best value per column within each language group.}\label{tab:judge_results}
+\caption{LLM-as-a-Judge (\texttt{gpt-5.6-terra}) qualitative evaluation across 50 test samples per model (49 for Qwen 3.6 27B Bengali) on a 1--5 scale. Bold marks the best value per column within each language group.}\label{tab:judge_results}
 \centering
 \footnotesize
 \begin{tabular}{p{0.9cm}lccccccc}
@@ -234,22 +338,22 @@ Lang. & Model & Rel & Comp & Faith & Coh & Conc & Flue & Avg \\
  & GPT-4o Mini & 2.84 & 3.26 & 1.18 & 4.74 & 2.90 & \textbf{5.00} & 3.32 \\
 \midrule
 \multirow{8}{*}{\rotatebox{90}{Bengali}}
- & Gemini 3.1 Flash Lite & 2.60 & 2.66 & 1.26 & 4.46 & \textbf{3.22} & 4.94 & \textbf{3.19} \\
+ & Gemini 3.1 Flash Lite & \textbf{2.60} & 2.66 & 1.26 & 4.46 & \textbf{3.22} & 4.94 & \textbf{3.19} \\
  & GPT-4o Mini & 2.54 & 2.56 & \textbf{1.30} & 4.36 & 3.06 & 4.80 & 3.10 \\
  & Gemini 2.5 Flash & 2.56 & 2.60 & 1.12 & \textbf{4.56} & 2.68 & \textbf{4.96} & 3.08 \\
  & DeepSeek V4 Flash & 2.46 & 2.50 & 1.10 & 4.46 & 3.00 & 4.94 & 3.08 \\
  & GPT-5.6 Luna & 2.36 & 2.70 & 1.18 & 4.44 & 2.70 & \textbf{4.96} & 3.06 \\
  & LLaMA 3.3 70B & 2.52 & 2.42 & 1.24 & 4.26 & 2.96 & 4.78 & 3.03 \\
+ & Qwen 3.6 27B & 2.51 & \textbf{2.73} & 1.14 & 4.38 & 2.61 & 4.79 & 3.03 \\
  & Qwen 3.5 Flash & 2.54 & 2.40 & 1.14 & 4.22 & 3.00 & 4.82 & 3.02 \\
- & Qwen 3.6 27B & 2.50 & \textbf{2.70} & 1.14 & 4.32 & 2.58 & 4.72 & 2.99 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 The qualitative judging reveals key insights:
 \begin{itemize}
-    \item \textbf{Syntactic Fluency vs. Factual Rigor:} All models score consistently high in Fluency (4.72--5.00) and Coherence (4.22--4.82). However, Faithfulness scores are uniformly penalized (1.10--1.34) by the judge due to strict verification against source articles, uncovering micro-hallucinations and unbacked assertions.
-    \item \textbf{English vs. Bengali Quality Disparity:} Models exhibit higher qualitative synthesis in English (overall averages 3.32--3.51) compared to Bengali (2.99--3.19), mirroring the cross-lingual transfer gap observed in lexical evaluations.
+    \item \textbf{Syntactic Fluency vs. Factual Rigor:} All models score consistently high in Fluency (4.78--5.00) and Coherence (4.22--4.82). Notably, all eight models hit a strict ceiling effect of 5.00 for English Fluency, which skews the overall judge average upwards. Conversely, Faithfulness scores are uniformly floored (1.10--1.34) by the judge due to strict verification against source articles, uncovering micro-hallucinations and unbacked assertions. The overall judge average thereby conflates a floored dimension (Faithfulness) with a ceilinged one (Fluency).
+    \item \textbf{English vs. Bengali Quality Disparity:} Models exhibit higher qualitative synthesis in English (overall averages 3.32--3.51) compared to Bengali (3.02--3.19), mirroring the cross-lingual transfer gap observed in lexical evaluations.
     \item \textbf{Top Performers:} GPT-5.6 Luna leads in English (avg.\ 3.51); Gemini 3.1 Flash Lite leads in Bengali (avg.\ 3.19).
 \end{itemize}
 
@@ -263,22 +367,18 @@ The qualitative judging reveals key insights:
 Our empirical findings underscore a critical divergence between model performance in high-resource English versus low-resource Bengali news summarization.
 
 \begin{enumerate}
-    \item \textbf{Cross-Lingual Transfer Gap:} In English, proprietary frontier models (GPT-5.6 Luna, Gemini 3.1 Flash Lite) outperform open-weights counterparts. Conversely, in Bengali, the open-weights LLaMA~3.3~70B and proprietary Gemini 2.5 Flash lead the lexical and factual evaluations, respectively. This suggests frontier models may suffer from sub-optimal multilingual tokenization or reduced Bengali training data representation.
-    \item \textbf{Metric Alignment:} N-gram metrics show weak alignment with factual fidelity. Although GPT-5.6 Luna scores competitively on ROUGE, its BanglaSummEval F1 is below Gemini 2.5 Flash (54.84\% vs.~58.43\%), primarily due to over-summarization and entity omission.
+    \item \textbf{Cross-Lingual Transfer Gap:} In English, proprietary frontier models (GPT-5.6 Luna, Gemini 3.1 Flash Lite) outperform open-weights counterparts. Conversely, in Bengali, the open-weights LLaMA~3.3~70B and proprietary Gemini 2.5 Flash lead the lexical and factual evaluations, respectively. This suggests frontier models may suffer from sub-optimal multilingual tokenization or reduced Bengali training data representation. The elevated completion failure rate observed in Qwen~3.6~27B (97.3\% Bengali vs.\ 99.2\% English) under a fixed token budget is consistent with this tokenization inefficiency argument.
+    \item \textbf{Metric Alignment:} N-gram metrics show weak alignment with factual fidelity. Although GPT-5.6 Luna scores competitively on ROUGE, its BanglaSummEval F1 is below Gemini 2.5 Flash (54.84\% vs.~58.43\%), a gap consistent with entity omission and verbose hallucinations. Additionally, we note a stark inversion for Gemini 3.1 Flash Lite, which ranks lowest in factual verification (BanglaSummEval F1 of 49.73\%) but achieves the highest overall qualitative LLM judge average (3.19), highlighting a severe discrepancy between objective factual retention and subjective qualitative grading.
     \item \textbf{Utility of Reference-Free QG/QA Verification:} BanglaSummEval provides an objective mechanism to identify entity fabrication and hallucination without requiring human reference summaries, serving as a vital complementary layer for low-resource NLP evaluation.
-    \item \textbf{LLM-as-a-Judge Qualitative Insights:} The \texttt{gpt-5.6-terra} evaluation demonstrates that while modern LLMs produce highly fluent and coherent Bengali prose, strict faithfulness remains a critical bottleneck. The judge consistently penalizes subtle extrinsic entity introductions, reinforcing the need for multi-tiered evaluation combining lexical, reference-free QG/QA, and model-based judging.
+    \item \textbf{LLM-as-a-Judge Calibration:} The qualitative \texttt{gpt-5.6-terra} evaluation highlights a significant judge calibration issue. The uniformly floored Faithfulness scores across all models, combined with the ranking inversion noted above, suggest the LLM judge struggles to measure Bengali factuality reliably. This reinforces the necessity of objective, reference-free QG/QA pipelines like BanglaSummEval rather than relying solely on automated LLM-as-a-Judge grading for low-resource languages.
     \item \textbf{Digital Inclusion and Equity:} Bengali has approximately 280 million native speakers and is severely under-served by NLP infrastructure. Our central finding---that frontier proprietary models underperform on Bengali---is a direct argument about whose languages receive quality AI. This aligns with SDG~4 (inclusive quality education) and SDG~10 (reduced inequalities), as equitable access to summarization tools supports information access in linguistically diverse communities.
     \item \textbf{Compute Efficiency:} An open-weights 70B model (LLaMA~3.3~70B) outperforms the largest frontier proprietary systems on Bengali lexical and factual metrics. This is a meaningful sustainability and deployability argument: low-resource-language workloads need not be routed to the largest, most resource-intensive closed-source model. Self-hosted open-weights deployments can avoid vendor lock-in and reduce inference costs for under-resourced institutions.
 \end{enumerate}
 
-%
-% ---------------------------------------------------------------
-% 5. CONCLUSION AND FUTURE WORK
-% ---------------------------------------------------------------
-%
+
 \section{Limitations}\label{sec:limitations}
 
-Several limitations bound the scope of our findings. First, each model was evaluated in a single zero-shot run without repetition; no statistical significance testing was conducted across metric differences. Second, the BanglaSummEval QG/QA pipeline was applied to only 100 Bengali samples per model due to inference cost constraints, which may limit the generalizability of factuality estimates. Third, the LLM-as-a-Judge evaluation used a single judge model (\texttt{gpt-5.6-terra}); a panel of diverse judges would improve robustness~\cite{verga2024}. Fourth, the study is confined to two languages (English and Bengali) and one domain (BBC news); results may differ in other languages, domains, or text lengths. Fifth, BLEU and ROUGE are known to correlate weakly with human judgment for abstractive summaries, and BERTScore recall alone does not capture precision-side factual failures. Sixth, post-hoc inspection revealed that 35 Qwen~3.6~27B outputs (8 English, 27 Bengali) retained un-stripped chain-of-thought reasoning traces (\texttt{<think>} blocks), inflating word counts and depressing ROUGE and chrF for that model specifically; results for Qwen~3.6~27B should be interpreted with this caveat. These limitations suggest directions for future work including multi-run significance testing, expanded language coverage, and human evaluation.
+Several limitations bound the scope of our findings. First, each model was evaluated in a single zero-shot run without repetition; no statistical significance testing was conducted across metric differences. Second, the BanglaSummEval QG/QA pipeline was applied to only 100 Bengali samples per model due to inference cost constraints, which may limit the generalizability of factuality estimates. Crucially, the QG pipeline utilized an English-only model (\texttt{valhalla/t5-base-qg-hl}) to generate questions over Bengali text; this remains a significant methodological limitation. Third, the LLM-as-a-Judge evaluation used a single judge model (\texttt{gpt-5.6-terra}), which may exhibit self-preference bias towards GPT-5.6 Luna; a panel of diverse judges would improve robustness~\cite{verga2024}. Furthermore, the judge heavily penalized Faithfulness despite moderate BanglaSummEval Precision, suggesting the judge may be overly strict or misaligned with Bengali factuality. Fourth, the study is confined to two languages (English and Bengali) and one domain (BBC news); results may differ in other languages, domains, or text lengths. Fifth, BLEU and ROUGE are known to correlate weakly with human judgment for abstractive summaries, and BERTScore recall alone does not capture precision-side factual failures. Sixth, as noted, 35 Qwen~3.6~27B outputs (8 English, 27 Bengali) exhausted the token budget and failed to generate a summary; these were excluded from quality metrics, yielding valid counts of 1,004 and 985, respectively. These limitations suggest directions for future work including multi-run significance testing, expanded language coverage, and human evaluation.
 
 \section{Data and Code Availability}\label{sec:availability}
 
@@ -325,11 +425,11 @@ Tang, L., et al.: Evaluating large language models on medical evidence summariza
 \bibitem{verga2024}
 Verga, P., et al.: Replacing judges with juries: Evaluating LLM generations with a panel of diverse models. arXiv preprint arXiv:2410.14669 (2024)
 
-\bibitem{gu2024}
-Gu, J., et al.: A survey on LLM-as-a-Judge. arXiv preprint arXiv:2411.15594 (2024)
+\bibitem{popovic2015}
+Popovi\'c, M.: chrF: character n-gram F-score for automatic MT evaluation. In: Proc. WMT, pp. 392--395. Lisbon (2015)
 
-\bibitem{urlana2025}
-Urlana, A., et al.: HalluCounter: Reference-free LLM hallucination detection in the wild. arXiv preprint arXiv:2501.05376 (2025)
+\bibitem{rafid2026}
+Rafid, A., et al.: BanglaSummEval: Reference-Free Factual Consistency Evaluation for Bangla Summarization. In: Proceedings of the Second Workshop on Language Models for Low-Resource Languages (LoResLM 2026), pp. 595--608. ACL (2026)
 
 \bibitem{hasan2021}
 Hasan, T., et al.: XL-Sum: Large-scale multilingual abstractive summarization for 44 languages. In: Findings of the Association for Computational Linguistics: ACL-IJCNLP 2021, pp. 4693--4703. ACL, Online (2021)

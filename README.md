@@ -9,7 +9,7 @@ This repository provides a comprehensive, reproducible zero-shot evaluation fram
 
 ---
 
-## 📌 Project Overview & Methodology
+##  Project Overview & Methodology
 
 The goal of this benchmark is to establish performance baselines across closed-source frontier models (OpenAI GPT series, Google Gemini) and open-weights models (Meta LLaMA, Alibaba Qwen, DeepSeek).
 
@@ -24,7 +24,7 @@ The goal of this benchmark is to establish performance baselines across closed-s
 
 ---
 
-## 🏆 Benchmark Results (1,012 Test Items)
+##  Benchmark Results (1,012 Test Items)
 
 ### 1. English Abstractive Summarization Benchmark
 
@@ -78,7 +78,7 @@ python src/evaluation/compute_stats.py
 
 ---
 
-## 📂 Repository Organization
+##  Repository Organization
 
 ```text
 xlsum-llm-eval/

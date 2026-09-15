@@ -1,4 +1,4 @@
-# XL-Sum LLM Evaluation Benchmark 
+# XL-Sum LLM Evaluation Benchmark
 
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -9,7 +9,7 @@ This repository provides a comprehensive, reproducible zero-shot evaluation fram
 
 ---
 
-##  Project Overview & Methodology
+## Project Overview & Methodology
 
 The goal of this benchmark is to establish performance baselines across closed-source frontier models (OpenAI GPT series, Google Gemini) and open-weights models (Meta LLaMA, Alibaba Qwen, DeepSeek).
 
@@ -17,14 +17,14 @@ The goal of this benchmark is to establish performance baselines across closed-s
 - **Linguistic & Statistical Metrics**: Evaluates **ROUGE-1, ROUGE-2, ROUGE-L, BLEU, chrF, and BERTScore-Recall**.
 - **Recommended Metric Selection** (based on *SummEval* & *BanglaSummEval* literature):
   - **ROUGE-1 / ROUGE-2**: Prioritized over ROUGE-L to reward semantic quality without penalizing structural restructuring.
-  - **chrF**: Captures character n-gram overlap, showing strong human correlation ($r = 0.588$).
+  - **chrF**: Captures character n-gram overlap, showing strong human correlation (r = 0.588).
   - **BERTScore-Recall**: Assesses factual coverage using `roberta-base` for English and `xlm-roberta-base` for Bengali.
 - **LLM-as-a-Judge**: Incorporates G-Eval multi-aspect evaluation (Fluency, Coherence, Relevance, Consistency).
 - **Auto-Resume Pipeline**: API evaluation runners incrementally save outputs per sample, avoiding duplicate execution or API quota wastage.
 
 ---
 
-##  Benchmark Results (1,012 Test Items)
+## Benchmark Results (1,012 Test Items)
 
 ### 1. English Abstractive Summarization Benchmark
 
@@ -58,18 +58,18 @@ The goal of this benchmark is to establish performance baselines across closed-s
 
 ### 3. Statistical Significance & Confidence Intervals
 
-To ensure rigorous evaluation, standard deviations (SD), 95% bootstrap confidence intervals (CI), and paired statistical significance tests ($p$-values with 5,000 bootstrap resamples) are computed across model pairs:
+To ensure rigorous evaluation, standard deviations (SD), 95% bootstrap confidence intervals (CI), and paired statistical significance tests (p-values with 5,000 bootstrap resamples) are computed across model pairs:
 
 - **Bengali Factuality (BanglaSummEval BSE-F1)**:
-  - **Gemini 2.5 Flash**: Mean = $58.43\%$, SD = $16.77$, 95% CI: [$55.08, 61.50$]
-  - **LLaMA 3.3 70B**: Mean = $58.28\%$, SD = $16.64$, 95% CI: [$54.79, 61.22$]
-  - **Paired Significance Test**: The difference of $+0.15\%$ between Gemini 2.5 Flash ($58.43\%$) and LLaMA 3.3 70B ($58.28\%$) is **not statistically significant** ($t = 0.098$, $p = 0.9218$, bootstrap $p = 0.9162$). Both models perform equivalently.
+  - **Gemini 2.5 Flash**: Mean = 58.43%, SD = 16.77, 95% CI: [55.08, 61.50]
+  - **LLaMA 3.3 70B**: Mean = 58.28%, SD = 16.64, 95% CI: [54.79, 61.22]
+  - **Paired Significance Test**: The difference of +0.15% between Gemini 2.5 Flash (58.43%) and LLaMA 3.3 70B (58.28%) is **not statistically significant** (t = 0.098, p = 0.9218, bootstrap p = 0.9162). Both models perform equivalently.
 - **English Factuality (SummEval SE-F1)**:
-  - **DeepSeek V4 Flash**: Mean = $63.45\%$, SD = $15.16$, 95% CI: [$60.55, 66.50$]
-  - **LLaMA 3.3 70B**: Mean = $60.18\%$, SD = $17.11$, 95% CI: [$56.83, 63.68$]
-  - **Paired Significance Test**: DeepSeek V4 Flash significantly outperforms LLaMA 3.3 70B ($+3.27\%$, $t = 2.407$, $p = 0.0161^*$).
+  - **DeepSeek V4 Flash**: Mean = 63.45%, SD = 15.16, 95% CI: [60.55, 66.50]
+  - **LLaMA 3.3 70B**: Mean = 60.18%, SD = 17.11, 95% CI: [56.83, 63.68]
+  - **Paired Significance Test**: DeepSeek V4 Flash significantly outperforms LLaMA 3.3 70B (+3.27%, t = 2.407, p = 0.0161).
 - **Bengali ROUGE-1 (1,012 items)**:
-  - **LLaMA 3.3 70B** ($16.23\%$, 95% CI: [$15.68, 16.78$]) vs. **GPT-4o Mini** ($15.63\%$, 95% CI: [$15.15, 16.13$]): Statistically significant difference ($+0.61\%$, $p = 0.0067^{**}$).
+  - **LLaMA 3.3 70B** (16.23%, 95% CI: [15.68, 16.78]) vs. **GPT-4o Mini** (15.63%, 95% CI: [15.15, 16.13]): Statistically significant difference (+0.61%, p = 0.0067).
 
 To run the full statistical significance suite across all models and metrics:
 ```bash
@@ -78,7 +78,7 @@ python src/evaluation/compute_stats.py
 
 ---
 
-##  Repository Organization
+## Repository Organization
 
 ```text
 xlsum-llm-eval/
@@ -119,7 +119,7 @@ xlsum-llm-eval/
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### 1. Installation
 
@@ -155,7 +155,3 @@ To generate publication figures:
 ```bash
 python src/visualization/generate_paper_plots.py
 ```
-
----
-
-

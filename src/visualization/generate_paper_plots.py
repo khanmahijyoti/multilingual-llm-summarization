@@ -104,9 +104,9 @@ def fig_rouge():
     ax.legend(loc='upper right', frameon=True, edgecolor='gray',
               fancybox=False, framealpha=1)
 
-    fig.savefig('fig_cross_lingual_rouge.png')
-    fig.savefig('fig_cross_lingual_rouge.pdf')
-    print('[OK] fig_cross_lingual_rouge  (.png + .pdf)')
+    fig.savefig('figures/fig_cross_lingual_rouge.png')
+    fig.savefig('figures/fig_cross_lingual_rouge.pdf')
+    print('[OK] figures/fig_cross_lingual_rouge  (.png + .pdf)')
     plt.close(fig)
 
 
@@ -139,9 +139,9 @@ def fig_banglasummeval():
     ax.legend(loc='upper right', frameon=True, edgecolor='gray',
               fancybox=False, framealpha=1, ncol=1)
 
-    fig.savefig('fig_banglasummeval_factuality.png')
-    fig.savefig('fig_banglasummeval_factuality.pdf')
-    print('[OK] fig_banglasummeval_factuality  (.png + .pdf)')
+    fig.savefig('figures/fig_banglasummeval_factuality.png')
+    fig.savefig('figures/fig_banglasummeval_factuality.pdf')
+    print('[OK] figures/fig_banglasummeval_factuality  (.png + .pdf)')
     plt.close(fig)
 
 
@@ -184,9 +184,9 @@ def fig_radar():
     ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1.12), frameon=True,
               edgecolor='gray', fancybox=False, fontsize=7.5)
 
-    fig.savefig('fig_radar_bengali.png')
-    fig.savefig('fig_radar_bengali.pdf')
-    print('[OK] fig_radar_bengali  (.png + .pdf)')
+    fig.savefig('figures/fig_radar_bengali.png')
+    fig.savefig('figures/fig_radar_bengali.pdf')
+    print('[OK] figures/fig_radar_bengali  (.png + .pdf)')
     plt.close(fig)
 
 

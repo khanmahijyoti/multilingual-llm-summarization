@@ -19,3 +19,14 @@ Thumbs.db
 
 # Data Files
 *.jsonl
+
+# TeX & LaTeX Build Artifacts
+*.tex
+*.aux
+*.out
+*.toc
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz

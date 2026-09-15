@@ -63,7 +63,7 @@ def process_language(lang_files, lang):
         
         if len(valid_refs) > 0:
             avg_len = np.mean(lengths)
-            P, R, F1 = score(valid_gens, valid_refs, model_type=model_type, lang=lang_code, verbose=False)
+            P, R, F1 = score(valid_gens, valid_refs, model_type=model_type, device='cpu', verbose=False)
             avg_bert_f1 = F1.mean().item() * 100
             avg_bert_r = R.mean().item() * 100
             

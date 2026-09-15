@@ -1,114 +1,179 @@
 # XL-Sum LLM Evaluation Benchmark 📊
 
-[![Python Version](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![Framework](https://img.shields.io/badge/Framework-PyTorch-orange.svg)](https://pytorch.org/)
+[![Python 3.9+](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![Framework: PyTorch](https://img.shields.io/badge/Framework-PyTorch-orange.svg)](https://pytorch.org/)
+[![Dataset: XL-Sum](https://img.shields.io/badge/Dataset-XL--Sum-purple.svg)](https://huggingface.co/datasets/csebuetnlp/xlsum)
 
-This repository provides a comprehensive, reproducible, and standardized zero-shot evaluation framework for Large Language Models (LLMs) on abstractive news summarization across **English** and **Bengali** using the **XL-Sum benchmark dataset** (1,012 test items each).
-
----
-
-## 1. Project Objective & Methodology
-
-The goal of this project is to benchmark the summarization capabilities of leading closed-source frontier models and open-weights models. The evaluation pipelines are designed around linguistic research recommendations for news summarization:
-* **Linguistic Metrics**: Rather than relying only on traditional lexically-constrained metrics (like BLEU), the evaluation pipeline implements **ROUGE-1, ROUGE-2, ROUGE-L, BLEU, chrF, and BERTScore-Recall**.
-* **Metrics Selection Insights (from SummEval & BanglaSummEval)**:
-  * **ROUGE-2 and ROUGE-1** are prioritized over ROUGE-L, as ROUGE-L penalizes semantic restructuring.
-  * **chrF** is used as it correlates much better with human judgments of summary relevance (Pearson's $r = 0.588$) compared to BLEU ($r = 0.073$).
-  * **BERTScore-Recall** is used to evaluate factual coverage, using **`roberta-base`** for English (recommended by *SummEval*) and **`xlm-roberta-base`** for Bengali (recommended by *BanglaSummEval*).
+This repository provides a comprehensive, reproducible zero-shot evaluation framework for Large Language Models (LLMs) on abstractive news summarization across **Bengali** and **English** using the **XL-Sum benchmark dataset** (1,012 test items each).
 
 ---
 
-## 2. Complete Benchmark Results (1,012 Items Each)
+## 📌 Project Overview & Methodology
 
-The following tables show the final benchmark scores calculated across **8 LLMs** on the full test sets:
+The goal of this benchmark is to establish performance baselines across closed-source frontier models (OpenAI GPT series, Google Gemini) and open-weights models (Meta LLaMA, Alibaba Qwen, DeepSeek).
 
-### 2.1 English Summarization Benchmark
-
-| Model | Count | ROUGE-1 | ROUGE-2 | ROUGE-L | BLEU | chrF | BERTScore-R |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **GPT 5.6 Luna** | 1012 | **24.12%** | 5.87% | **15.96%** | 2.06% | **31.51%** | 89.02% |
-| **Gemini 3.1 Flash Lite** | 1011 | 22.94% | **5.89%** | 15.32% | **2.14%** | 30.39% | **89.25%** |
-| **Gemini 2.5 Flash** | 1012 | 22.13% | 5.43% | 14.72% | 1.90% | 29.62% | 88.90% |
-| **Qwen 3.5 Flash** | 1012 | 21.99% | 4.93% | 14.48% | 1.66% | 29.46% | 88.77% |
-| **Deepseek V4 Flash** | 1012 | 21.43% | 5.28% | 14.12% | 1.82% | 29.34% | 88.83% |
-| **Qwen 3.6 27B** | 1012 | 21.31% | 4.81% | 13.89% | 1.44% | 27.17% | 88.81% |
-| **GPT 4o Mini** | 1012 | 21.16% | 5.03% | 13.95% | 1.70% | 28.78% | 88.73% |
-| **Llama 3.3 70B (Groq)** | 1012 | 20.38% | 5.71% | 14.00% | 1.94% | 28.72% | 88.87% |
+### Key Evaluation Features:
+- **Linguistic & Statistical Metrics**: Evaluates **ROUGE-1, ROUGE-2, ROUGE-L, BLEU, chrF, and BERTScore-Recall**.
+- **Recommended Metric Selection** (based on *SummEval* & *BanglaSummEval* literature):
+  - **ROUGE-1 / ROUGE-2**: Prioritized over ROUGE-L to reward semantic quality without penalizing structural restructuring.
+  - **chrF**: Captures character n-gram overlap, showing strong human correlation ($r = 0.588$).
+  - **BERTScore-Recall**: Assesses factual coverage using `roberta-base` for English and `xlm-roberta-base` for Bengali.
+- **LLM-as-a-Judge**: Incorporates G-Eval multi-aspect evaluation (Fluency, Coherence, Relevance, Consistency).
+- **Auto-Resume Pipeline**: API evaluation runners incrementally save outputs per sample, avoiding duplicate execution or API quota wastage.
 
 ---
 
-### 2.2 Bengali Summarization Benchmark
+## 🏆 Benchmark Results (1,012 Test Items)
 
-| Model | Count | ROUGE-1 | ROUGE-2 | ROUGE-L | BLEU | chrF | BERTScore-R |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Llama 3.3 70B (Groq)** | 1012 | **16.23%** | **5.29%** | **12.44%** | **1.90%** | 33.30% | **87.94%** |
-| **GPT 4o Mini** | 1012 | 15.63% | 4.53% | 11.83% | 1.74% | **33.74%** | 87.80% |
-| **Gemini 2.5 Flash** | 1012 | 15.05% | 4.32% | 11.27% | 1.64% | 33.11% | 87.93% |
-| **Deepseek V4 Flash** | 1012 | 15.00% | 4.19% | 11.22% | 1.62% | 33.39% | 87.86% |
-| **Qwen 3.5 Flash** | 1012 | 14.74% | 4.09% | 11.16% | 1.56% | 33.50% | 87.72% |
-| **Gemini 3.1 Flash Lite** | 1012 | 14.04% | 3.88% | 10.93% | 1.42% | 32.15% | 87.88% |
-| **GPT 5.6 Luna** | 1012 | 14.01% | 3.71% | 10.65% | 1.27% | 32.53% | 87.57% |
-| **Qwen 3.6 27B** | 1012 | 13.50% | 3.57% | 10.11% | 0.98% | 28.38% | 87.44% |
+### 1. English Abstractive Summarization Benchmark
+
+| Model Identifier | Engine / Provider | Completed | ROUGE-1 (%) | ROUGE-2 (%) | ROUGE-L (%) | chrF (%) | BERTScore-Recall (%) |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **GPT 5.6 Luna** | OpenAI API | 1012 | **24.12%** | 5.87% | **15.96%** | **31.51%** | 89.02% |
+| **Gemini 3.1 Flash Lite** | Google AI Studio | 1011 | 22.94% | **5.89%** | 15.32% | 30.39% | **89.25%** |
+| **Gemini 2.5 Flash** | Google AI Studio | 1012 | 22.13% | 5.43% | 14.72% | 29.62% | 88.90% |
+| **Qwen 3.5 Flash** | OpenRouter | 1012 | 21.99% | 4.93% | 14.48% | 29.46% | 88.77% |
+| **DeepSeek V4 Flash** | OpenRouter | 1012 | 21.43% | 5.28% | 14.12% | 29.34% | 88.83% |
+| **Qwen 3.6 27B Instruct** | OpenRouter | 1012 | 21.31% | 4.81% | 13.89% | 27.17% | 88.81% |
+| **GPT-4o Mini** | OpenAI API | 1012 | 21.16% | 5.03% | 13.95% | 28.78% | 88.73% |
+| **LLaMA 3.3 70B Versatile** | Groq API | 1012 | 20.38% | 5.71% | 14.00% | 28.72% | 88.87% |
 
 ---
 
-## 3. Repository Directory Structure
+### 2. Bengali Abstractive Summarization Benchmark
+
+| Model Identifier | Engine / Provider | Completed | ROUGE-1 (%) | ROUGE-2 (%) | ROUGE-L (%) | chrF (%) | BERTScore-Recall (%) |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **LLaMA 3.3 70B Versatile** | Groq API | 1012 | **16.23%** | **5.29%** | **12.44%** | 33.30% | **87.94%** |
+| **GPT-4o Mini** | OpenAI API | 1012 | 15.63% | 4.53% | 11.83% | **33.74%** | 87.80% |
+| **Gemini 2.5 Flash** | Google AI Studio | 1012 | 15.05% | 4.32% | 11.27% | 33.11% | 87.93% |
+| **DeepSeek V4 Flash** | OpenRouter | 1012 | 15.00% | 4.19% | 11.22% | 33.39% | 87.86% |
+| **Qwen 3.5 Flash** | OpenRouter | 1012 | 14.74% | 4.09% | 11.16% | 33.50% | 87.72% |
+| **Gemini 3.1 Flash Lite** | Google AI Studio | 1012 | 14.04% | 3.88% | 10.93% | 32.15% | 87.88% |
+| **GPT 5.6 Luna** | OpenAI API | 1012 | 14.01% | 3.71% | 10.65% | 32.53% | 87.57% |
+| **Qwen 3.6 27B Instruct** | OpenRouter | 1012 | 13.50% | 3.57% | 10.11% | 28.38% | 87.44% |
+
+---
+
+### 3. Statistical Significance & Confidence Intervals
+
+To ensure rigorous evaluation, standard deviations (SD), 95% bootstrap confidence intervals (CI), and paired statistical significance tests ($p$-values with 5,000 bootstrap resamples) are computed across model pairs:
+
+- **Bengali Factuality (BanglaSummEval BSE-F1)**:
+  - **Gemini 2.5 Flash**: Mean = $58.43\%$, SD = $16.77$, 95% CI: [$55.08, 61.50$]
+  - **LLaMA 3.3 70B**: Mean = $58.28\%$, SD = $16.64$, 95% CI: [$54.79, 61.22$]
+  - **Paired Significance Test**: The difference of $+0.15\%$ between Gemini 2.5 Flash ($58.43\%$) and LLaMA 3.3 70B ($58.28\%$) is **not statistically significant** ($t = 0.098$, $p = 0.9218$, bootstrap $p = 0.9162$). Both models perform equivalently.
+- **English Factuality (SummEval SE-F1)**:
+  - **DeepSeek V4 Flash**: Mean = $63.45\%$, SD = $15.16$, 95% CI: [$60.55, 66.50$]
+  - **LLaMA 3.3 70B**: Mean = $60.18\%$, SD = $17.11$, 95% CI: [$56.83, 63.68$]
+  - **Paired Significance Test**: DeepSeek V4 Flash significantly outperforms LLaMA 3.3 70B ($+3.27\%$, $t = 2.407$, $p = 0.0161^*$).
+- **Bengali ROUGE-1 (1,012 items)**:
+  - **LLaMA 3.3 70B** ($16.23\%$, 95% CI: [$15.68, 16.78$]) vs. **GPT-4o Mini** ($15.63\%$, 95% CI: [$15.15, 16.13$]): Statistically significant difference ($+0.61\%$, $p = 0.0067^{**}$).
+
+To run the full statistical significance suite across all models and metrics:
+```bash
+python src/evaluation/compute_stats.py
+```
+
+---
+
+## 📂 Repository Organization
 
 ```text
 xlsum-llm-eval/
+├── README.md                           # Main publication landing page & benchmark leaderboard
+├── LICENSE                             # MIT License
+├── CITATION.cff                        # GitHub interactive citation metadata
+├── requirements.txt                    # Pinned python dependencies
+├── .gitignore                          # Excludes credentials, caches, datasets, TeX files
 │
-├── english_XLSum_v2.0/                # English-specific files
-│   ├── deepseek_v4_flash_english_results.csv
-│   ├── gemini_2.5_flash_english_results.csv
-│   ├── gemini_3.1_flash_lite_english_results.csv
-│   ├── gpt_4o_mini_english_results.csv
-│   ├── gpt_5.6_luna_english_results.csv
-│   ├── groq_llama70b_1012_english_results.csv
-│   ├── qwen_3.5_flash_english_results.csv
-│   ├── qwen_3.6_27b_english_results.csv
-│   │
-│   ├── run_combined_llm_english.py     # Prompt-generation and summarizer
-│   ├── evaluate_all_metrics.py         # The evaluation script
-│   ├── final_comparison_results.tsv    # Extracted TSV sheet results
-│   ├── SummEval-pdf.md                 # Summary metric literature reference
-│   └── BanglaSummEval-pdf.md           # Bengali metric literature reference
+├── data/                               # Dataset documentation & schemas
+│   └── README.md                       # Instructions to download XL-Sum Bengali/English datasets
 │
-├── deepseek_v4_flash_bengali_results.csv # Bengali evaluation output CSVs
-├── gemini_2.5_flash_bengali_results.csv
-├── gemini_3.1_flash_lite_bengali_results.csv
-├── gpt_4o_mini_bengali_results.csv
-├── gpt_5.6_luna_bengali_results.csv
-├── groq_llama70b_1000_results.csv
-├── qwen_3.5_flash_bengali_results.csv
-├── qwen_3.6_27b_bengali_results.csv
+├── src/                                # Source code
+│   ├── evaluation/                     # Metric engines (ROUGE, chrF, BLEU, BERTScore, LLM Judge)
+│   │   ├── benchmark_7_models.py
+│   │   ├── compute_bn_bertscore.py
+│   │   ├── evaluate_all_16_files_judge.py
+│   │   └── llm_judge_evaluate.py
+│   ├── models/                         # API Providers & Evaluation Wrappers
+│   │   ├── evaluate_openai_models.py
+│   │   ├── evaluate_gemini_models.py
+│   │   ├── evaluate_openrouter_models.py
+│   │   └── evaluate_groq_qwen.py
+│   └── visualization/                  # Publication visualizers
+│       └── generate_paper_plots.py     # Generates radar, factuality, and ROUGE plots
 │
-├── run_combined_llm.py                 # Multi-LLM API runner for Bengali
-├── evaluate_gemini_models.py           # Gemini evaluation wrapper
-├── evaluate_groq_qwen.py               # Groq LLaMA evaluation wrapper
-├── evaluate_openai_models.py           # OpenAI evaluation wrapper
-├── evaluate_openrouter_models.py       # OpenRouter (Qwen/Deepseek) wrapper
-├── .gitignore                          # Ignores cached folders, API keys, and datasets
-└── README.md                           # Comprehensive documentation
+├── results/                            # Benchmark Output Datasets
+│   ├── bengali/                        # Bengali output CSV files per model
+│   ├── english/                        # English output CSV files per model
+│   └── summaries/                      # Aggregated master CSV/TSV tables
+│
+├── figures/                            # Publication-ready figures (.pdf and .png)
+│
+└── tools/                              # Data inspection & diagnostic scripts
+    ├── check_anomalies.py
+    └── extract_error_samples.py
 ```
 
 ---
 
-## 4. Getting Started
+## 🚀 Getting Started
 
-### 4.1 Prerequisites
-Create and activate the environment, then install dependencies:
+### 1. Installation
+
+Clone the repository and install required packages:
+
 ```bash
-pip install sacrebleu bert-score rouge-score torch transformers
+git clone https://github.com/khanmahijyoti/xlsum-llm-eval.git
+cd xlsum-llm-eval
+pip install -r requirements.txt
 ```
 
-### 4.2 How to Run the Evaluation
-To calculate all evaluation metrics across the results, run:
+### 2. Environment Variables
+
+Set your API keys depending on the models you wish to evaluate:
+
 ```bash
-python english_XLSum_v2.0/evaluate_all_metrics.py
+export OPENAI_API_KEY="your-openai-key"
+export GEMINI_API_KEY="your-gemini-key"
+export OPENROUTER_API_KEY="your-openrouter-key"
+export GROQ_API_KEY="your-groq-key"
 ```
-This script will:
-1. Parse the text fields and ROUGE parameters in each language's result CSV.
-2. Evaluate corpus BLEU and chrF.
-3. Compute semantic token alignment using **BERTScore-Recall** on a GPU (using `roberta-base` for English and `xlm-roberta-base` for Bengali).
-4. Save the compiled results in `english_XLSum_v2.0/final_comparison_results.tsv`.
+
+### 3. Running Metric Evaluation
+
+To compute all metrics across generated model summaries:
+
+```bash
+python src/evaluation/benchmark_7_models.py
+```
+
+To generate publication figures:
+
+```bash
+python src/visualization/generate_paper_plots.py
+```
+
+---
+
+## 📜 Citation
+
+If you use this benchmark framework, results, or evaluation code in your work, please cite:
+
+```bibtex
+@article{khan2026xlsumllm,
+  title={XL-Sum LLM Evaluation Benchmark: Zero-Shot Summarization Capabilities Across Bengali and English},
+  author={Khan, Mahi},
+  year={2026},
+  journal={arXiv preprint},
+  url={https://github.com/khanmahijyoti/xlsum-llm-eval}
+}
+```
+
+---
+
+## ⚖️ License
+
+This project is licensed under the [MIT License](LICENSE).

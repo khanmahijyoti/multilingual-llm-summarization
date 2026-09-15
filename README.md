@@ -158,22 +158,4 @@ python src/visualization/generate_paper_plots.py
 
 ---
 
-## 📜 Citation
 
-If you use this benchmark framework, results, or evaluation code in your work, please cite:
-
-```bibtex
-@article{khan2026xlsumllm,
-  title={XL-Sum LLM Evaluation Benchmark: Zero-Shot Summarization Capabilities Across Bengali and English},
-  author={Khan, Mahi},
-  year={2026},
-  journal={arXiv preprint},
-  url={https://github.com/khanmahijyoti/xlsum-llm-eval}
-}
-```
-
----
-
-## ⚖️ License
-
-This project is licensed under the [MIT License](LICENSE).

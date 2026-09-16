@@ -1,4 +1,4 @@
-# XL-Sum LLM Evaluation Benchmark
+# MULTILINGUAL-LLM-SUMMARIZATION
 
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
@@ -58,18 +58,64 @@ The goal of this benchmark is to establish performance baselines across closed-s
 
 ### 3. Statistical Significance & Confidence Intervals
 
-To ensure rigorous evaluation, standard deviations (SD), 95% bootstrap confidence intervals (CI), and paired statistical significance tests (p-values with 5,000 bootstrap resamples) are computed across model pairs:
+To ensure rigorous evaluation, standard deviations (SD), 95% bootstrap confidence intervals (CI), and paired statistical significance tests (paired $t$-statistic, asymptotic $p$-value, and bootstrap $p$-value with 5,000 paired resamples) are computed consistently across all reported comparisons:
+
+#### Unified Statistical Significance & Comparison Table
+
+| Comparison / Metric | Model A (Mean ± SD [95% CI]) | Model B (Mean ± SD [95% CI]) | Mean Difference (A − B) | Paired Test ($t$) | Paired $p$-value | Bootstrap $p$-value ($B=5,000$) | Finding |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- |
+| **Bengali Factuality (BSE-F1)** | **Gemini 2.5 Flash**<br>58.43% ± 16.77 [55.08, 61.60] ($N=100$) | **LLaMA 3.3 70B**<br>58.28% ± 16.64 [54.92, 61.35] ($N=100$) | +0.15% | $t = 0.098$ | $p = 0.9218$ | $p = 0.9162$ | The difference is not statistically significant |
+| **English Factuality (SE-F1)** | **DeepSeek V4 Flash**<br>63.45% ± 15.16 [60.53, 66.48] ($N=100$) | **LLaMA 3.3 70B**<br>60.18% ± 17.11 [56.84, 63.54] ($N=100$) | +3.27% | $t = 2.407$ | $p = 0.0161$ | $p = 0.0130$ | Statistically significant ($p < 0.05$) |
+| **Bengali ROUGE-1 (Primary)** | **LLaMA 3.3 70B**<br>16.23% ± 9.05 [15.69, 16.79] ($N=1012$) | **GPT-4o Mini**<br>15.63% ± 8.27 [15.12, 16.13] ($N=1012$) | +0.61% | $t = 2.713$ | $p = 0.0067$ | $p = 0.0070$ | Statistically significant ($p < 0.01$) |
+| **Bengali ROUGE-1 (Secondary)** | **LLaMA 3.3 70B**<br>16.23% ± 9.05 [15.69, 16.79] ($N=1012$) | **Gemini 2.5 Flash**<br>15.05% ± 7.86 [14.55, 15.52] ($N=1012$) | +1.19% | $t = 5.364$ | $p < 0.0001$ | $p < 0.0001$ | Statistically significant ($p < 0.0001$) |
+| **English ROUGE-1 (Top Pair)** | **GPT-5.6 Luna**<br>24.12% ± 7.61 [23.65, 24.59] ($N=1012$) | **Gemini 3.1 Flash Lite**<br>22.94% ± 6.60 [22.54, 23.35] ($N=1011$) | +1.17% | $t = 6.321$ | $p < 0.0001$ | $p < 0.0001$ | Statistically significant ($p < 0.0001$) |
+
+#### Comparison-by-Comparison Detail
 
 - **Bengali Factuality (BanglaSummEval BSE-F1)**:
-  - **Gemini 2.5 Flash**: Mean = 58.43%, SD = 16.77, 95% CI: [55.08, 61.50]
-  - **LLaMA 3.3 70B**: Mean = 58.28%, SD = 16.64, 95% CI: [54.79, 61.22]
-  - **Paired Significance Test**: The difference of +0.15% between Gemini 2.5 Flash (58.43%) and LLaMA 3.3 70B (58.28%) is **not statistically significant** (t = 0.098, p = 0.9218, bootstrap p = 0.9162). Both models perform equivalently.
+  - **Gemini 2.5 Flash**: Mean = 58.43%, SD = 16.77, 95% CI: [55.08, 61.60] ($N = 100$)
+  - **LLaMA 3.3 70B**: Mean = 58.28%, SD = 16.64, 95% CI: [54.92, 61.35] ($N = 100$)
+  - **Mean Difference**: +0.15% (unrounded: +0.146%)
+  - **Paired Test Statistic**: $t = 0.098$ ($N = 100$)
+  - **Paired-test $p$-value**: $p = 0.9218$
+  - **Bootstrap $p$-value (5,000 resamples)**: $p = 0.9162$
+  - **Finding**: The difference is not statistically significant.
+
 - **English Factuality (SummEval SE-F1)**:
-  - **DeepSeek V4 Flash**: Mean = 63.45%, SD = 15.16, 95% CI: [60.55, 66.50]
-  - **LLaMA 3.3 70B**: Mean = 60.18%, SD = 17.11, 95% CI: [56.83, 63.68]
-  - **Paired Significance Test**: DeepSeek V4 Flash significantly outperforms LLaMA 3.3 70B (+3.27%, t = 2.407, p = 0.0161).
-- **Bengali ROUGE-1 (1,012 items)**:
-  - **LLaMA 3.3 70B** (16.23%, 95% CI: [15.68, 16.78]) vs. **GPT-4o Mini** (15.63%, 95% CI: [15.15, 16.13]): Statistically significant difference (+0.61%, p = 0.0067).
+  - **DeepSeek V4 Flash**: Mean = 63.45%, SD = 15.16, 95% CI: [60.53, 66.48] ($N = 100$)
+  - **LLaMA 3.3 70B**: Mean = 60.18%, SD = 17.11, 95% CI: [56.84, 63.54] ($N = 100$)
+  - **Mean Difference**: +3.27% (unrounded: +3.271%)
+  - **Paired Test Statistic**: $t = 2.407$ ($N = 100$)
+  - **Paired-test $p$-value**: $p = 0.0161$
+  - **Bootstrap $p$-value (5,000 resamples)**: $p = 0.0130$
+  - **Finding**: Statistically significant ($p < 0.05$).
+
+- **Bengali ROUGE-1 (LLaMA 3.3 70B vs. GPT-4o Mini)**:
+  - **LLaMA 3.3 70B**: Mean = 16.23%, SD = 9.05, 95% CI: [15.69, 16.79] ($N = 1012$)
+  - **GPT-4o Mini**: Mean = 15.63%, SD = 8.27, 95% CI: [15.12, 16.13] ($N = 1012$)
+  - **Mean Difference**: +0.61% (unrounded: +0.608%)
+  - **Paired Test Statistic**: $t = 2.713$ ($N = 1012$)
+  - **Paired-test $p$-value**: $p = 0.0067$
+  - **Bootstrap $p$-value (5,000 resamples)**: $p = 0.0070$
+  - **Finding**: Statistically significant ($p < 0.01$).
+
+- **Bengali ROUGE-1 (LLaMA 3.3 70B vs. Gemini 2.5 Flash)**:
+  - **LLaMA 3.3 70B**: Mean = 16.23%, SD = 9.05, 95% CI: [15.69, 16.79] ($N = 1012$)
+  - **Gemini 2.5 Flash**: Mean = 15.05%, SD = 7.86, 95% CI: [14.55, 15.52] ($N = 1012$)
+  - **Mean Difference**: +1.19% (unrounded: +1.187%)
+  - **Paired Test Statistic**: $t = 5.364$ ($N = 1012$)
+  - **Paired-test $p$-value**: $p < 0.0001$ ($p = 8.12 \times 10^{-8}$)
+  - **Bootstrap $p$-value (5,000 resamples)**: $p < 0.0001$ (bootstrap $p = 0.0000$)
+  - **Finding**: Statistically significant ($p < 0.0001$).
+
+- **English ROUGE-1 (GPT-5.6 Luna vs. Gemini 3.1 Flash Lite)**:
+  - **GPT-5.6 Luna**: Mean = 24.12%, SD = 7.61, 95% CI: [23.65, 24.59] ($N = 1012$)
+  - **Gemini 3.1 Flash Lite**: Mean = 22.94%, SD = 6.60, 95% CI: [22.54, 23.35] ($N = 1011$)
+  - **Mean Difference**: +1.17% (unrounded: +1.173%)
+  - **Paired Test Statistic**: $t = 6.321$ ($N = 1011$)
+  - **Paired-test $p$-value**: $p < 0.0001$ ($p = 2.60 \times 10^{-10}$)
+  - **Bootstrap $p$-value (5,000 resamples)**: $p < 0.0001$ (bootstrap $p = 0.0000$)
+  - **Finding**: Statistically significant ($p < 0.0001$).
 
 To run the full statistical significance suite across all models and metrics:
 ```bash

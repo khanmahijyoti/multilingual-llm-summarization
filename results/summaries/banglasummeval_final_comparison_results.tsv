@@ -1,9 +1,0 @@
-Model	Count	Precision	Recall	BanglaSummEval F1
-Deepseek V4 Flash	100	64.14	56.17	57.34
-Gemini 2.5 Flash	100	61.65	60.83	58.43
-Gemini 3.1 Flash Lite	100	52.83	52.5	49.73
-Gpt 4O Mini	100	63.38	55.33	56.73
-Gpt 5.6 Luna	100	58.87	56.17	54.84
-Llama 3.3 70B (Groq)	100	65.78	57.5	58.28
-Qwen 3.5 Flash	100	61.48	57.17	56.15
-Qwen 3.6 27B	100	60.49	59.0	56.41

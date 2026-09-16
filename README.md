@@ -28,31 +28,31 @@ The goal of this benchmark is to establish performance baselines across closed-s
 
 ### 1. English Abstractive Summarization Benchmark
 
-| Model Identifier | Engine / Provider | Completed | ROUGE-1 (%) | ROUGE-2 (%) | ROUGE-L (%) | chrF (%) | BERTScore-Recall (%) |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **GPT 5.6 Luna** | OpenAI API | 1012 | **24.12%** | 5.87% | **15.96%** | **31.51%** | 89.02% |
-| **Gemini 3.1 Flash Lite** | Google AI Studio | 1011 | 22.94% | **5.89%** | 15.32% | 30.39% | **89.25%** |
-| **Gemini 2.5 Flash** | Google AI Studio | 1012 | 22.13% | 5.43% | 14.72% | 29.62% | 88.90% |
-| **Qwen 3.5 Flash** | OpenRouter | 1012 | 21.99% | 4.93% | 14.48% | 29.46% | 88.77% |
-| **DeepSeek V4 Flash** | OpenRouter | 1012 | 21.43% | 5.28% | 14.12% | 29.34% | 88.83% |
-| **Qwen 3.6 27B Instruct** | OpenRouter | 1012 | 21.31% | 4.81% | 13.89% | 27.17% | 88.81% |
-| **GPT-4o Mini** | OpenAI API | 1012 | 21.16% | 5.03% | 13.95% | 28.78% | 88.73% |
-| **LLaMA 3.3 70B Versatile** | Groq API | 1012 | 20.38% | 5.71% | 14.00% | 28.72% | 88.87% |
+| Model Identifier | Engine / Provider | Completed | ROUGE-1 (%) | ROUGE-2 (%) | ROUGE-L (%) | chrF (%) | BERTScore-Recall (%) | SummEval Precision (%) | SummEval Recall (%) | SummEval F1 (%) |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **GPT 5.6 Luna** | OpenAI API | 1012 | **24.12%** | 5.87% | **15.96%** | **31.51%** | 89.02% | 65.17% | 58.00% | 58.05% |
+| **Gemini 3.1 Flash Lite** | Google AI Studio | 1011 | 22.94% | **5.89%** | 15.32% | 30.39% | **89.25%** | 59.74% | 52.83% | 52.28% |
+| **Gemini 2.5 Flash** | Google AI Studio | 1012 | 22.13% | 5.43% | 14.72% | 29.62% | 88.90% | 65.93% | 58.33% | 59.44% |
+| **Qwen 3.5 Flash** | OpenRouter | 1012 | 21.99% | 4.93% | 14.48% | 29.46% | 88.77% | 67.04% | 58.17% | 58.52% |
+| **DeepSeek V4 Flash** | OpenRouter | 1012 | 21.43% | 5.28% | 14.12% | 29.34% | 88.83% | 69.66% | **63.00%** | **63.45%** |
+| **Qwen 3.6 27B Instruct** | OpenRouter | 1012 | 21.31% | 4.81% | 13.89% | 27.17% | 88.81% | 63.12% | 55.83% | 56.58% |
+| **GPT-4o Mini** | OpenAI API | 1012 | 21.16% | 5.03% | 13.95% | 28.78% | 88.73% | 65.62% | 59.67% | 59.76% |
+| **LLaMA 3.3 70B Versatile** | Groq API | 1012 | 20.38% | 5.71% | 14.00% | 28.72% | 88.87% | **69.68%** | 57.17% | 60.18% |
 
 ---
 
 ### 2. Bengali Abstractive Summarization Benchmark
 
-| Model Identifier | Engine / Provider | Completed | ROUGE-1 (%) | ROUGE-2 (%) | ROUGE-L (%) | chrF (%) | BERTScore-Recall (%) |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **LLaMA 3.3 70B Versatile** | Groq API | 1012 | **16.23%** | **5.29%** | **12.44%** | 33.30% | **87.94%** |
-| **GPT-4o Mini** | OpenAI API | 1012 | 15.63% | 4.53% | 11.83% | **33.74%** | 87.80% |
-| **Gemini 2.5 Flash** | Google AI Studio | 1012 | 15.05% | 4.32% | 11.27% | 33.11% | 87.93% |
-| **DeepSeek V4 Flash** | OpenRouter | 1012 | 15.00% | 4.19% | 11.22% | 33.39% | 87.86% |
-| **Qwen 3.5 Flash** | OpenRouter | 1012 | 14.74% | 4.09% | 11.16% | 33.50% | 87.72% |
-| **Gemini 3.1 Flash Lite** | Google AI Studio | 1012 | 14.04% | 3.88% | 10.93% | 32.15% | 87.88% |
-| **GPT 5.6 Luna** | OpenAI API | 1012 | 14.01% | 3.71% | 10.65% | 32.53% | 87.57% |
-| **Qwen 3.6 27B Instruct** | OpenRouter | 1012 | 13.50% | 3.57% | 10.11% | 28.38% | 87.44% |
+| Model Identifier | Engine / Provider | Completed | ROUGE-1 (%) | ROUGE-2 (%) | ROUGE-L (%) | chrF (%) | BERTScore-Recall (%) | BanglaSummEval Precision (%) | BanglaSummEval Recall (%) | BanglaSummEval F1 (%) |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **LLaMA 3.3 70B Versatile** | Groq API | 1012 | **16.23%** | **5.29%** | **12.44%** | 33.30% | **87.94%** | **65.78%** | 57.50% | 58.28% |
+| **GPT-4o Mini** | OpenAI API | 1012 | 15.63% | 4.53% | 11.83% | **33.74%** | 87.80% | 63.38% | 55.33% | 56.73% |
+| **Gemini 2.5 Flash** | Google AI Studio | 1012 | 15.05% | 4.32% | 11.27% | 33.11% | 87.93% | 61.65% | **60.83%** | **58.43%** |
+| **DeepSeek V4 Flash** | OpenRouter | 1012 | 15.00% | 4.19% | 11.22% | 33.39% | 87.86% | 64.14% | 56.17% | 57.34% |
+| **Qwen 3.5 Flash** | OpenRouter | 1012 | 14.74% | 4.09% | 11.16% | 33.50% | 87.72% | 61.48% | 57.17% | 56.15% |
+| **Gemini 3.1 Flash Lite** | Google AI Studio | 1012 | 14.04% | 3.88% | 10.93% | 32.15% | 87.88% | 52.83% | 52.50% | 49.73% |
+| **GPT 5.6 Luna** | OpenAI API | 1012 | 14.01% | 3.71% | 10.65% | 32.53% | 87.57% | 58.87% | 56.17% | 54.84% |
+| **Qwen 3.6 27B Instruct** | OpenRouter | 1012 | 13.50% | 3.57% | 10.11% | 28.38% | 87.44% | 61.69% | 58.16% | 57.02% |
 
 ---
 

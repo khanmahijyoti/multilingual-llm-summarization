@@ -81,10 +81,9 @@ python src/evaluation/compute_stats.py
 ## Repository Organization
 
 ```text
-xlsum-llm-eval/
+multilingual-llm-summarization/
 ├── README.md                           # Main publication landing page & benchmark leaderboard
 ├── LICENSE                             # MIT License
-├── CITATION.cff                        # GitHub interactive citation metadata
 ├── requirements.txt                    # Pinned python dependencies
 ├── .gitignore                          # Excludes credentials, caches, datasets, TeX files
 │
@@ -107,8 +106,7 @@ xlsum-llm-eval/
 │
 ├── results/                            # Benchmark Output Datasets
 │   ├── bengali/                        # Bengali output CSV files per model
-│   ├── english/                        # English output CSV files per model
-│   └── summaries/                      # Aggregated master CSV/TSV tables
+│   └── english/                        # English output CSV files per model
 │
 ├── figures/                            # Publication-ready figures (.pdf and .png)
 │
@@ -126,8 +124,8 @@ xlsum-llm-eval/
 Clone the repository and install required packages:
 
 ```bash
-git clone https://github.com/khanmahijyoti/xlsum-llm-eval.git
-cd xlsum-llm-eval
+git clone https://github.com/khanmahijyoti/multilingual-llm-summarization.git
+cd multilingual-llm-summarization
 pip install -r requirements.txt
 ```
 
